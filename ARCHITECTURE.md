@@ -14,8 +14,10 @@
 > reflection traversal/pooling/guards/write-back, insight/summary TEXT via **local Ollama** (deterministic
 > stub only on Ollama error), and the **eval harness** (built & run — WITHOUT 0.53 / WITH 1.00 / PLACEBO 0.33,
 > lift +0.467; see §10). **NOT USED (by design)** = LangGraph + Claude — the agent is a direct Python pipeline
-> (observe→detect→govern→reflect), not a graph orchestration. **STILL WIP** = **event-driven wake** (spike was
-> AMBER → we run on **polling**; "wakes on event" is aspirational). Sections §1/§2/§4/§7 describe the target design, not the current state.
+> (observe→detect→govern→reflect), not a graph orchestration. **event-driven wake** is now **LIVE-VERIFIED as an
+> opt-in path** — a DataHub Actions consumer woke the detection on a real Kafka `EntityChangeEvent_v1`
+> (TAG event, confidence 0.901→0.600, zero polling; root cause was a wrong `schema_registry_url`, see
+> `EVENT_WAKE_STATUS.md`). **Polling remains the shipped default.** Sections §1/§2/§4/§7 describe the target design, not the current state.
 
 ---
 

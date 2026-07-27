@@ -1,0 +1,55 @@
+# Mnemo event-driven wake — Actions pipeline config.
+#
+# ROOT CAUSE FIX (see mnemo_wake_action.py docstring + ../EVENT_WAKE_STATUS.md):
+# schema_registry_url must point at GMS's EMBEDDED schema registry
+# (SCHEMA_REGISTRY_TYPE=INTERNAL in this quickstart), not the upstream-default
+# localhost:8081 (which does not exist here and breaks ALL topics, not just MCL).
+#
+# Run as an independent process (does NOT touch/restart the DataHub stack):
+#   cd actions && ../.venv/bin/datahub actions -c mnemo_wake_config.yaml
+#
+# Trigger it: emit a tag/owner/schema change on an EXISTING entity via the SDK
+# (see run_agent.py's `seed()` pattern, or spike/_smoke_emit2.py for a template) —
+# then watch this pipeline's log for "MNEMO WAKE".
+name: mnemo_wake
+
+source:
+  type: "kafka"
+  config:
+    connection:
+      bootstrap: ${KAFKA_BOOTSTRAP_SERVER:-localhost:9092}
+      schema_registry_url: ${SCHEMA_REGISTRY_URL:-http://localhost:8090/schema-registry/api/}
+    topic_routes:
+      pe: PlatformEvent_v1
+    # No "mcl" route here — we only need the pe (EntityChangeEvent) topic. Omitting
+    # it means the KafkaEventSource never subscribes to MetadataChangeLog_* at all
+    # (cleaner than the MCL-early-filter path, which is for when you DO want some MCL).
+
+# Only wake on the categories the generator hook actually emits for our entities
+# (TAG/TECHNICAL_SCHEMA/LIFECYCLE empirically confirmed — see spike/_scan_pe_topic.py;
+# OWNER/GLOSSARY_TERM/DOCUMENTATION are the documented sibling categories).
+filters:
+  - type: event_type
+    config:
+      filter:
+        EntityChangeEvent_v1:
+          event:
+            - category: "TAG"
+            - category: "TECHNICAL_SCHEMA"
+            - category: "DOCUMENTATION"
+            - category: "GLOSSARY_TERM"
+            - category: "OWNER"
+            - category: "LIFECYCLE"
+
+action:
+  type: "mnemo_wake_action:MnemoWakeAction"
+  config:
+    # "|"-delimited string or YAML list of ML model URNs to re-check on wake.
+    # NOTE: delimiter is "|", not "," — DataHub URNs contain commas themselves
+    # (e.g. urn:li:mlModel:(urn:li:dataPlatform:mlflow,churn_model,PROD)).
+    # Defaults to the demo's churn_model; override via MNEMO_WATCH_MODELS for an
+    # isolated test run so you don't touch shared demo state.
+    watch_models: ${MNEMO_WATCH_MODELS:-urn:li:mlModel:(urn:li:dataPlatform:mlflow,churn_model,PROD)}
+
+datahub:
+  server: "${DATAHUB_GMS_URL:-http://localhost:8090}"

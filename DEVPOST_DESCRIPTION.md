@@ -70,10 +70,12 @@ replicate without becoming a different kind of system.
 
 ## Challenges we ran into
 
-- The Actions-framework event hook (`EntityChangeEvent_v1`) loads and connects, but did not reliably
-  reach our custom action in quick spike tests — we shipped a **polling fallback**
-  (`get_urns_by_filter`) rather than claim event-driven wake we hadn't verified live. This is called out
-  plainly in the repo rather than glossed over.
+- The Actions-framework event hook (`EntityChangeEvent_v1`) at first never reached our custom action. We
+  traced it to a wrong `schema_registry_url` default (this quickstart embeds the registry *inside* GMS,
+  not on :8081) — not the event-type filter we'd first suspected. After fixing it, **event-driven wake is
+  now live-verified**: a real Kafka TAG event woke the detection, confidence 0.901→0.600, ~30s end-to-end,
+  zero polling (`EVENT_WAKE_STATUS.md`). Polling remains the shipped default; event-wake is opt-in with a
+  static watch-list.
 - Structured-property write-back needed the direct `StructuredPropertiesClass` emit path rather than the
   patch-builder helper to round-trip cleanly against our quickstart image.
 - Getting insight synthesis working without requiring judges to provision an API key — solved with a
@@ -97,9 +99,8 @@ aspirational behavior as shipped.
 
 ## What's next
 
-- Harden the eval realism — a raw-facts memory arm so the WITH score reflects the model *reasoning* rather
-  than reading a near-explicit label (the current WITH=1.00 is a ceiling; see `examples/EVAL_NOTES.md`).
-- Get `EntityChangeEvent_v1` reaching the custom Action reliably (currently a polling fallback).
+- Resolve watched models dynamically via reverse lineage (the event-driven path currently uses a static
+  watch-list) and broaden the empirically-verified `EntityChangeEvent` categories beyond TAG/schema/lifecycle.
 - Upstream a DataHub Skill / RFC proposing "agent memory + confidence via structured properties."
 
 ## Built with
