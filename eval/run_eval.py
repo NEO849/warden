@@ -148,7 +148,7 @@ def main():
     with open(os.path.join(outdir, "results.csv"), "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=["arm", "id", "gold", "pred"])
         w.writeheader(); w.writerows(rows)
-    summary = {"model": os.getenv("OLLAMA_MODEL", "default"), "n_per_arm": n, "results": results,
+    summary = {"model": os.getenv("OLLAMA_MODEL", "mannix/llama3.1-8b-abliterated:q4_k_m"), "n_per_arm": n, "results": results,
                "lift_accuracy": round(results["WITH"]["accuracy"] - results["WITHOUT"]["accuracy"], 3),
                "lift_accuracy_raw": round(results["WITH_RAW"]["accuracy"] - results["WITHOUT"]["accuracy"], 3)}
     with open(os.path.join(os.path.dirname(outdir), "examples", "eval_summary.json"), "w") as f:

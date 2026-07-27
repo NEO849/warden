@@ -59,7 +59,7 @@ seed_memory(dsB, 0.85, "dsB: enriched events")
 seed_memory(dsC, 0.8, "dsC: raw ingest")
 time.sleep(1)
 
-print("=== reflect on the model (real LLM synthesis via local Ollama) ===")
+print("=== reflect on the model (real LLM synthesis via local Ollama — ~1-3 min on CPU; pass llm=None for an instant deterministic stub) ===")
 rec = reflect(g, mem, MODEL, llm=make_reflection_llm())
 print(json.dumps(rec, indent=2)[:900])
 
@@ -76,7 +76,7 @@ if found:
     print("\nREFLECTION", "GREEN ✅ (graph-level insight grounded in ≥2 remembered assets, on the graph)"
           if len(ins['evidence_urns']) >= 2 else "check")
     print("   [honesty] REAL = traversal + proximity-weighted confidence pooling + guards + write-back.\n"
-          "             The insight TEXT is a deterministic stub (llm=None); real synthesis needs "
-          "ANTHROPIC_API_KEY.")
+          "             The insight TEXT is synthesized by a local Ollama model (no API key); on any Ollama\n"
+          "             error it falls back to a deterministic stub — the pipeline never depends on the LLM.")
 else:
     print("   no reflection written:", rec)

@@ -34,7 +34,10 @@ transcript. When it revisits a model, it:
    set changed**. That's the tell.
 4. **Feeds the delta as contradicting evidence** into a Bayesian belief update (`confidence_model.py`),
    dropping the model's confidence below a governance threshold.
-5. **Opens a DataHub Proposal instead of silently trusting the model** — a human gate, not an auto-write.
+5. **Flags the model for human review instead of silently trusting it** — writes a confidence-gated
+   governance signal (`mnemo.governance_status=NEEDS_REVIEW` + a `mnemo-needs-review` tag, visible in the
+   DataHub UI) and **never rewrites the model's own description**. (OSS DataHub has no ActionRequest/Proposal
+   entity — that approval workflow is Cloud-only; this is the honest OSS-native gate.)
 
 This is demonstrated end-to-end in [`run_ml_drift_demo.py`](run_ml_drift_demo.py): confidence visibly moves
 **0.901 → 0.600**, crossing the 0.7 proposal threshold, live against a running DataHub instance.
@@ -55,7 +58,7 @@ survives across runs, and gets **compared against new evidence** every time the 
 | Belief update | none — no per-asset belief | Bayesian log-odds update, re-scores on each revisit |
 | Drift detection | none (nothing to diff against) | remembered source-set vs. live lineage, unchanged-schema-safe |
 | Cross-asset synthesis | none | lineage-wide reflection (below), grounded in its own memories |
-| Governance | none | confidence-gated: low-confidence → DataHub Proposal, not auto-write |
+| Governance | none | confidence-gated: low-confidence → visible `needs-review` signal (tag + status property), never auto-rewrites the model |
 
 ---
 
@@ -73,7 +76,7 @@ survives across runs, and gets **compared against new evidence** every time the 
                          │   1. mnemo/reader.py   — pull asset context (schema, upstream, owners, memory)
                          │   2. mnemo/memory.py   — load prior Belief (log-odds + mass + provenance)
                          │   3. confidence_model.py — Bayesian log-odds update on new evidence
-                         │   4. governance gate   — confidence < 0.7 → DataHub Proposal, not auto-write
+                         │   4. governance gate   — confidence < 0.7 → needs-review tag + status property (human gate), never rewrites description
                          │   5. mnemo/reflection.py — lineage-wide reflection (crown feature, below)
                          └──────────────────────────────┘
                                         │
@@ -95,12 +98,13 @@ log-odds space** — evidence accumulates additively and stays bounded:
 - Evidence is **discounted by lineage distance**: each hop halves its weight (`GAMMA = 0.5`).
 - `C_MIN/C_MAX = 0.02/0.98` (Cromwell's rule — never absolute certainty).
 - `N_MIN = 3.0` evidence mass required before a `>0.85` belief is allowed to auto-write.
-- `TAU_PROPOSAL = 0.7` — cross below this after a contradiction and the agent opens a governance
-  **Proposal** instead of writing.
+- `TAU_PROPOSAL = 0.7` — cross below this after a contradiction and the agent routes to a governance
+  **review** (a visible `needs-review` signal) instead of auto-writing.
 - Belief **decays toward 0.5** on a configurable half-life if not revisited (staleness-aware).
 
-Run it standalone: `python confidence_model.py` reproduces the worked example (0.60 → 0.90 →
-contradiction → proposal → 0.96 on human confirmation).
+Run it standalone: `python confidence_model.py` reproduces the worked example (0.60 → 0.90 → 30-day decay →
+contradiction → review → 0.96 on human confirmation). The standalone arc includes a decay step, so its
+post-contradiction point sits lower than the hero demo's 0.600 (which has no decay).
 
 ### Lineage-wide reflection (crown feature)
 

@@ -37,8 +37,10 @@ Mnemo is a memory agent for DataHub that:
    confidence *magnitude* is measured, not prior-only; when the profiles are quiet, the structural
    source-delta term still fires, so Mnemo stays a **superset** of a PSI/KS drift monitor, never weaker.
 4. **Gates on governance, not vibes**: when confidence drops below threshold after a contradiction, Mnemo
-   opens a **DataHub Proposal** — a human approval gate — instead of silently trusting (or silently
-   re-writing) the model's metadata.
+   writes a confidence-gated **`needs-review` signal** to the graph (a `mnemo.governance_status=NEEDS_REVIEW`
+   property + a `mnemo-needs-review` tag, visible in the DataHub UI) for a human to act on — and **never
+   rewrites the model's own description**. (OSS DataHub has no ActionRequest/Proposal entity; that approval
+   workflow is Cloud-only, so this is the honest OSS-native gate.)
 5. **Reflects across lineage** (crown feature): periodically walks a model's full upstream chain,
    pools its own previously-written per-asset memories into a single graph-level insight that lives on
    **no single asset**, and writes it back onto the model with its own confidence and an evidence-URN

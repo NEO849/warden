@@ -1,5 +1,5 @@
 {
-  "model": "default",
+  "model": "mannix/llama3.1-8b-abliterated:q4_k_m",
   "n_per_arm": 15,
   "results": {
     "WITHOUT": {

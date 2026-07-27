@@ -2,7 +2,7 @@
 
 > Working title: **Mnemo — Compounding, Governed Memory for the Data Graph**
 > Deadline: **2026-08-10 17:00 EDT** · Judging 08-17→08-31 · Winners ~09-08 · Pool $20,500
-> v3 changelog: source-verified differentiation (analytics-agent audited at code level); added the
+> v3 changelog: source-verified differentiation (analytics-agent reviewed at code level, public repo as of 2026-07-27); added the
 > **eval-harness** and **governance-native** pillars (real judges); crown feature = **lineage-wide reflection**;
 > confidence model formalized (`confidence_model.py`, runs, hits 0.6→0.9); category decision = **late-bind**.
 
@@ -12,8 +12,8 @@
 > actually built + live-verified is the table in **§10** — trust that, not the prose below. As of
 > 2026-07-27: **BUILT & REAL** = compounding belief-on-graph, live source-delta drift detection,
 > reflection traversal/pooling/guards/write-back, insight/summary TEXT via **local Ollama** (deterministic
-> stub only on Ollama error), and the **eval harness** (built & run — WITHOUT 0.53 / WITH 1.00 / PLACEBO 0.33,
-> lift +0.467; see §10). **NOT USED (by design)** = LangGraph + Claude — the agent is a direct Python pipeline
+> stub only on Ollama error), and the **eval harness** (built & run — headline **WITHOUT 0.53 / WITH_RAW 0.93**
+> (reasoning from bare facts) / PLACEBO 0.33; WITH 1.00 is an acknowledged ceiling; lift +0.40 raw; see §10). **NOT USED (by design)** = LangGraph + Claude — the agent is a direct Python pipeline
 > (observe→detect→govern→reflect), not a graph orchestration. **event-driven wake** is now **LIVE-VERIFIED as an
 > opt-in path** — a DataHub Actions consumer woke the detection on a real Kafka `EntityChangeEvent_v1`
 > (TAG event, confidence 0.901→0.600, zero polling; root cause was a wrong `schema_registry_url`, see
@@ -56,7 +56,7 @@ no data-engineer in the field will assemble.
    per-asset memories, and synthesizes a **confidence-scored insight onto the Data Product** citing the
    evidence URNs — a conclusion on no single asset.
 6. **Governs** — ranks/gates every action on tier/owner/certification signals; low-confidence or
-   ungoverned → opens a **DataHub Proposal** (human gate) instead of auto-writing.
+   ungoverned → writes a confidence-gated **`needs-review` signal** (tag + status property, human gate) instead of auto-writing (OSS has no Proposal entity — Cloud-only).
 7. **Proves lift** — an eval harness reports task accuracy **WITH vs WITHOUT** Mnemo's memory context.
 
 Auto-documentation / PII tagging are **incidental side-effects**, never the pitch (both ship already).
@@ -98,7 +98,7 @@ failure") is exactly what the OpenAI-TPM + Pinterest-EM judges reward. Best odds
 **Demo scenario:** Mnemo watches **end-to-end ML lineage** (training data → feature → model → deployment).
 On an upstream schema/distribution change, it wakes, reconciles its memory of the affected model's inputs,
 re-scores confidence, and **flags silent model-drift / target-leakage risk before degradation** — writing a
-governed, provenance-carrying warning back onto the model entity, gated through a Proposal.
+governed, provenance-carrying warning back onto the model entity, surfaced via a `needs-review` signal (tag + status property).
 
 **Infra risk & safety net:** the barrier that thins this field — standing up **ML lineage** in DataHub
 (`MLModel`/`MLFeatureTable`/`MLModelGroup` + training-run lineage) — is also our risk. So ML-lineage sample
@@ -112,19 +112,19 @@ identical, only the demo scenario + track change. Aim ML; keep the flagship as t
 
 ```
         ┌──────────────── DataHub (local Docker) ────────────────┐
-        │  GMS :8080 · UI :9002 · Kafka MCL/EntityChangeEvent     │
+        │  GMS :8090 · UI :9002 · Kafka MCL/EntityChangeEvent     │
         └──────┬──────────────────────────────────────┬──────────┘
      reads (MCP)│                                      │ EntityChangeEvent_v1
    lineage/schema                                      ▼ (wake)
                ▼                          ┌──────────────────────────┐
    ┌───────────────────────┐   wakes      │  Actions Framework        │
    │  Mnemo Agent          │◄─────────────│  MnemoAction (verified)   │
-   │  LangGraph ReAct + Claude            └──────────────────────────┘
+   │  direct Python pipeline (Ollama)     └──────────────────────────┘
    │  1 reconcile prior memory (confidence_model.py Bayesian update)
    │  2 governance gate (tier/owner/certification)
    │  3 reflect over lineage path (crown)
    └───────────┬───────────────────────────────────────────────────┘
-    write typed structured properties  ·  low-conf/ungoverned → DataHub Proposal (human gate)
+    write typed structured properties  ·  low-conf/ungoverned → needs-review tag + status property (human gate)
                │
         eval harness: task accuracy WITH vs WITHOUT mnemo.* context (the 50%→90% echo)
 ```
@@ -140,7 +140,7 @@ identical, only the demo scenario + track change. Aim ML; keep the flagship as t
 
 ### Stack
 Python 3.11 · `acryl-datahub[datahub-rest,datahub-kafka]` · `acryl-datahub-actions` ·
-`acryldata/mcp-server-datahub` (read) · LangGraph · Claude (`LLM_PROVIDER` swappable) · Docker quickstart.
+`acryldata/mcp-server-datahub` (read) · direct Python pipeline · local Ollama · Docker quickstart.
 
 ---
 
