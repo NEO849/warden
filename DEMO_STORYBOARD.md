@@ -42,7 +42,7 @@ On screen while this is spoken: **Shot 1** below.
 | # | Time | On-screen | Voiceover | Note |
 |---|------|-----------|-----------|------|
 | **9** | +0:00–0:15 | **Reflection crown.** `run_reflection_demo.py` output: lineage-wide insight, `confidence 0.912`, citing 3 assets, written on the model. | "And it goes further — Mnemo reflects across the whole lineage path to a graph-level insight that lives on no single asset." | `mnemo/reflection.py` is BUILT & GREEN (§10). Safe to include; drop Shot 8's tail to hold under 3:00 if added. |
-| **10** | +0:00–0:15 | Eval lift bar (`examples/eval_lift.svg`): task accuracy WITHOUT 0.53 → WITH 1.00, PLACEBO 0.33. | "Measured: the memory context lifts task accuracy from 0.53 — and irrelevant memory (placebo) *hurts*, so it's the relevant context, not just more tokens." | **BUILT & run (§10)** — real chart from `eval/results.csv`. Say WITH is a near-ceiling; the raw-facts arm gives the production-realistic number. |
+| **10** | +0:00–0:15 | Eval lift bar (`examples/eval_lift.svg`): WITHOUT 0.53 → **WITH_RAW 0.93** → WITH 1.00, PLACEBO 0.33. | "Measured: stripped to bare facts, the memory lifts triage accuracy from 0.53 to 0.93 by reasoning — and irrelevant memory (placebo) *hurts*, so it's the relevant memory, not just more tokens." | **BUILT & run (§10)** — real chart from `eval/results.csv`. Lead with WITH_RAW 0.93 (the honest, production-realistic number); WITH=1.00 is the acknowledged ceiling; PLACEBO 0.33 is the rigor control. |
 
 ---
 

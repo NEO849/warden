@@ -6,9 +6,12 @@ import os
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 summary = json.load(open(os.path.join(ROOT, "examples", "eval_summary.json")))
 r = summary["results"]
-arms = ["WITHOUT", "PLACEBO", "WITH"]
-colors = {"WITHOUT": "#9aa4b2", "PLACEBO": "#e06c75", "WITH": "#4c9f70"}
-W, H, pad, bw, gap = 520, 320, 60, 90, 40
+# WITH_RAW is additive (rigor arm, memory = raw facts only, no NL conclusion) — only rendered if
+# present in results.csv/eval_summary.json, so older summaries without it still render unchanged.
+arms = ["WITHOUT", "PLACEBO"] + (["WITH_RAW"] if "WITH_RAW" in r else []) + ["WITH"]
+colors = {"WITHOUT": "#9aa4b2", "PLACEBO": "#e06c75", "WITH_RAW": "#d9a441", "WITH": "#4c9f70"}
+H, pad, bw, gap = 320, 60, 90, 40
+W = 2 * pad + len(arms) * bw + (len(arms) - 1) * gap
 maxv = 1.0
 
 

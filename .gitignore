@@ -15,3 +15,6 @@ __pycache__/
 
 # OS
 .DS_Store
+
+# transient eval run logs (artifacts live in results.csv/eval_summary.json)
+eval/eval_*.log

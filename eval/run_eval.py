@@ -34,48 +34,69 @@ SYSTEM = ("You are an ML production-risk triage agent. Given metadata about a mo
 # 15 genuinely-distinct labeled cases (5/class), mixed difficulty incl. hard cases where memory is
 # weak/ambiguous so WITH is not trivially perfect. raw = facts shown to ALL arms; mem = Mnemo memory.
 # The memory gives REMEMBERED STATE, never the label — the model must still reason.
+#
+# mem_raw = the same remembered state, but stripped to RAW FACTS ONLY (prior_source/prior_type/
+# prior_confidence/current_source-style key=value pairs) — no natural-language conclusion words
+# ("differs", "temporal leakage", "reaches the label", "same", "not consumed", ...). Feeds the
+# WITH_RAW arm: the model must derive the verdict itself from remembered-vs-current facts, the
+# same way it would from raw lineage/schema deltas. Existing `mem` strings are untouched.
 _BASE = [
     # ---- DRIFT (5) ----
     {"label": "DRIFT", "raw": "Model churn_model uses feature days_since_signup; lineage sources=[fct_users_v2]; schema looks normal, no error.",
-     "mem": "Memory on days_since_signup: previously sourced from [fct_users] at confidence 0.90 (2 events). Current source [fct_users_v2] differs."},
+     "mem": "Memory on days_since_signup: previously sourced from [fct_users] at confidence 0.90 (2 events). Current source [fct_users_v2] differs.",
+     "mem_raw": "prior_source=fct_users; prior_type=signup_ts; prior_confidence=0.90; current_source=fct_users_v2"},
     {"label": "DRIFT", "raw": "Model ltv_model uses feature avg_order_value; column type is now string; no rename.",
-     "mem": "Memory: avg_order_value was type decimal at confidence 0.88; it is now string — same name, changed type."},
+     "mem": "Memory: avg_order_value was type decimal at confidence 0.88; it is now string — same name, changed type.",
+     "mem_raw": "prior_source=avg_order_value; prior_type=decimal; prior_confidence=0.88; current_source=avg_order_value:string"},
     {"label": "DRIFT", "raw": "Model ranking_model uses feature ctr_7d; upstream table events re-pointed to events_clone; both look identical.",
-     "mem": "Memory (LOW confidence 0.55): ctr_7d source may have changed from events to events_clone; not strongly corroborated."},
+     "mem": "Memory (LOW confidence 0.55): ctr_7d source may have changed from events to events_clone; not strongly corroborated.",
+     "mem_raw": "prior_source=events; prior_type=table_ref; prior_confidence=0.55; current_source=events_clone"},
     {"label": "DRIFT", "raw": "Model credit_model uses feature income_bucket; upstream applies a new bucketing threshold; column name unchanged.",
-     "mem": "Memory: income_bucket boundaries changed vs remembered distribution (confidence 0.82); semantics shifted under a stable name."},
+     "mem": "Memory: income_bucket boundaries changed vs remembered distribution (confidence 0.82); semantics shifted under a stable name.",
+     "mem_raw": "prior_source=bucket_def_v1(0.10,0.25,0.50); prior_type=threshold_config; prior_confidence=0.82; current_source=bucket_def_v2(0.15,0.30,0.55)"},
     {"label": "DRIFT", "raw": "Model demand_model uses feature region_code; upstream ref table swapped from geo_v1 to geo_v3; values remap silently.",
-     "mem": "Memory: region_code encoded via geo_v1 at confidence 0.9; now geo_v3 — remembered mapping differs."},
+     "mem": "Memory: region_code encoded via geo_v1 at confidence 0.9; now geo_v3 — remembered mapping differs.",
+     "mem_raw": "prior_source=geo_v1; prior_type=ref_table; prior_confidence=0.9; current_source=geo_v3"},
     # ---- LEAKAGE (5) ----
     {"label": "LEAKAGE", "raw": "Model fraud_model uses feature risk_score; lineage risk_score.sources=[txn_enriched]; txn_enriched upstream=[txn_raw, label_fraud_outcome]; training label=label_fraud_outcome.",
-     "mem": "Memory: risk_score's lineage transitively reaches the model's label dataset label_fraud_outcome (confidence 0.85)."},
+     "mem": "Memory: risk_score's lineage transitively reaches the model's label dataset label_fraud_outcome (confidence 0.85).",
+     "mem_raw": "prior_source=txn_enriched; prior_type=lineage_hop; prior_confidence=0.85; current_source=label_fraud_outcome"},
     {"label": "LEAKAGE", "raw": "Model churn_model2 adds feature will_cancel_flag computed post-subscription-end; label is churned_30d.",
-     "mem": "Memory: will_cancel_flag is derived after the outcome window that defines churned_30d (confidence 0.8) — temporal leakage."},
+     "mem": "Memory: will_cancel_flag is derived after the outcome window that defines churned_30d (confidence 0.8) — temporal leakage.",
+     "mem_raw": "prior_source=will_cancel_flag; prior_type=event_time_offset; prior_confidence=0.8; current_source=churned_30d_window"},
     {"label": "LEAKAGE", "raw": "Model default_model uses feature acct_status; acct_status.sources=[collections]; collections is downstream of default_label.",
-     "mem": "Memory: acct_status upstream includes collections, which is computed from default_label (confidence 0.83)."},
+     "mem": "Memory: acct_status upstream includes collections, which is computed from default_label (confidence 0.83).",
+     "mem_raw": "prior_source=collections; prior_type=lineage_hop; prior_confidence=0.83; current_source=default_label"},
     {"label": "LEAKAGE", "raw": "Model conv_model uses feature refund_amount; refunds only exist after conversion; target is converted.",
-     "mem": "Memory: refund_amount is populated only for converted users — availability correlates with the target (confidence 0.78)."},
+     "mem": "Memory: refund_amount is populated only for converted users — availability correlates with the target (confidence 0.78).",
+     "mem_raw": "prior_source=refund_amount; prior_type=availability_flag; prior_confidence=0.78; current_source=converted"},
     {"label": "LEAKAGE", "raw": "Model lead_model uses feature sales_touch_count; sales only touch qualified leads; label is qualified.",
-     "mem": "Memory: sales_touch_count is a consequence of qualification, not a cause (confidence 0.7) — reaches the label."},
+     "mem": "Memory: sales_touch_count is a consequence of qualification, not a cause (confidence 0.7) — reaches the label.",
+     "mem_raw": "prior_source=sales_touch_count; prior_type=event_trigger; prior_confidence=0.7; current_source=qualified"},
     # ---- NO_RISK (5) ----
     {"label": "NO_RISK", "raw": "Model reco_model uses feature affinity sources=[catalog]. Event: column internal_note modified on audit_log; audit_log not in lineage.",
-     "mem": "Memory: no input of reco_model depends on audit_log (confidence 0.90)."},
+     "mem": "Memory: no input of reco_model depends on audit_log (confidence 0.90).",
+     "mem_raw": "prior_source=affinity; prior_type=lineage_dependency_set; prior_confidence=0.90; current_source=catalog"},
     {"label": "NO_RISK", "raw": "Model churn_model source table fct_users was RENAMED to fct_users (curated); underlying data identical, alias kept.",
-     "mem": "Memory: fct_users and fct_users(curated) are the same physical data via alias (confidence 0.9); no semantic change."},
+     "mem": "Memory: fct_users and fct_users(curated) are the same physical data via alias (confidence 0.9); no semantic change.",
+     "mem_raw": "prior_source=fct_users; prior_type=physical_id:tbl_9f21; prior_confidence=0.9; current_source=physical_id:tbl_9f21"},
     {"label": "NO_RISK", "raw": "Model ltv_model: a deprecated feature legacy_score (not in the model's feature list) changed upstream.",
-     "mem": "Memory: legacy_score is not consumed by ltv_model (confidence 0.92)."},
+     "mem": "Memory: legacy_score is not consumed by ltv_model (confidence 0.92).",
+     "mem_raw": "prior_source=legacy_score; prior_type=deprecated_feature; prior_confidence=0.92; current_source=ltv_model_feature_list_v7"},
     {"label": "NO_RISK", "raw": "Model ranking_model: a column description was edited on an upstream table; no schema or lineage change.",
-     "mem": "Memory: cosmetic doc-only edit; ranking_model inputs unchanged (confidence 0.9)."},
+     "mem": "Memory: cosmetic doc-only edit; ranking_model inputs unchanged (confidence 0.9).",
+     "mem_raw": "prior_source=ranking_model_inputs; prior_type=input_set_hash:a1c3; prior_confidence=0.9; current_source=input_set_hash:a1c3"},
     {"label": "NO_RISK", "raw": "Model demand_model: a new column added to an upstream table; existing consumed columns untouched.",
-     "mem": "Memory: added column is not consumed by demand_model; existing inputs stable (confidence 0.88)."},
+     "mem": "Memory: added column is not consumed by demand_model; existing inputs stable (confidence 0.88).",
+     "mem_raw": "prior_source=demand_model_inputs; prior_type=input_set_hash:7e2d; prior_confidence=0.88; current_source=input_set_hash:7e2d"},
 ]
 PLACEBO = ("Memory on unrelated asset marketing_dashboard: refreshed nightly, owned by growth team, "
            "tier GOLD, confidence 0.88. No relation to this model.")
 
 
 def cases(n):
-    return [{"id": f"case{i}", "label": _BASE[i]["label"], "raw": _BASE[i]["raw"], "mem": _BASE[i]["mem"]}
-            for i in range(min(n, len(_BASE)))]
+    return [{"id": f"case{i}", "label": _BASE[i]["label"], "raw": _BASE[i]["raw"], "mem": _BASE[i]["mem"],
+             "mem_raw": _BASE[i]["mem_raw"]} for i in range(min(n, len(_BASE)))]
 
 
 def classify(context):
@@ -104,7 +125,11 @@ def main():
     data = cases(n)
     arms = {"WITHOUT": lambda c: c["raw"],
             "WITH": lambda c: c["raw"] + "\n\nMEMORY:\n" + c["mem"],
-            "PLACEBO": lambda c: c["raw"] + "\n\nMEMORY:\n" + PLACEBO}
+            "PLACEBO": lambda c: c["raw"] + "\n\nMEMORY:\n" + PLACEBO,
+            # Rigor arm: memory carries ONLY raw remembered facts (prior_source/prior_type/
+            # prior_confidence/current_source) — no natural-language conclusion. The model must
+            # infer DRIFT/LEAKAGE/NO_RISK itself, same as a rigor-judge would demand.
+            "WITH_RAW": lambda c: c["raw"] + "\n\nMEMORY (remembered facts):\n" + c["mem_raw"]}
     rows, results = [], {}
     for arm, render in arms.items():
         pairs = []
@@ -124,7 +149,8 @@ def main():
         w = csv.DictWriter(f, fieldnames=["arm", "id", "gold", "pred"])
         w.writeheader(); w.writerows(rows)
     summary = {"model": os.getenv("OLLAMA_MODEL", "default"), "n_per_arm": n, "results": results,
-               "lift_accuracy": round(results["WITH"]["accuracy"] - results["WITHOUT"]["accuracy"], 3)}
+               "lift_accuracy": round(results["WITH"]["accuracy"] - results["WITHOUT"]["accuracy"], 3),
+               "lift_accuracy_raw": round(results["WITH_RAW"]["accuracy"] - results["WITHOUT"]["accuracy"], 3)}
     with open(os.path.join(os.path.dirname(outdir), "examples", "eval_summary.json"), "w") as f:
         json.dump(summary, f, indent=2)
     print("=== SUMMARY ===")

@@ -16,7 +16,13 @@
       "accuracy": 0.333,
       "macro_f1": 0.167,
       "n": 15
+    },
+    "WITH_RAW": {
+      "accuracy": 0.933,
+      "macro_f1": 0.933,
+      "n": 15
     }
   },
-  "lift_accuracy": 0.467
+  "lift_accuracy": 0.467,
+  "lift_accuracy_raw": 0.4
 }
