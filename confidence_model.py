@@ -19,6 +19,8 @@ GAMMA = 0.5                       # provenance proximity: each lineage hop halve
 AUTHORITY = {                     # a_e per evidence source
     "lineage": 1.8,
     "schema": 1.8,
+    "drift_stat": 1.5,             # measured PSI/KS drift score (mnemo/drift.py) — below lineage/schema:
+                                    # a statistical signal, corroborating (not identical to) the structural delta
     "usage": 0.7,
     "human": 4.0,                 # human confirmation counts most...
 }

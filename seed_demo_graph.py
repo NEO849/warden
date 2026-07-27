@@ -16,7 +16,10 @@ from datahub.emitter.mce_builder import make_dataset_urn
 from datahub.ingestion.graph.client import DataHubGraph, DataHubGraphConfig
 from datahub.metadata.schema_classes import (
     AuditStampClass,
+    DatasetFieldProfileClass,
     DatasetLineageTypeClass,
+    DatasetProfileClass,
+    HistogramClass,
     MLFeaturePropertiesClass,
     MLFeatureTablePropertiesClass,
     MLModelPropertiesClass,
@@ -33,6 +36,8 @@ from datahub.metadata.schema_classes import (
     UpstreamLineageClass,
 )
 
+from mnemo import drift
+
 load_dotenv()
 g = DataHubGraph(DataHubGraphConfig(
     server=os.getenv("DATAHUB_GMS_URL", "http://localhost:8090"),
@@ -41,7 +46,9 @@ g = DataHubGraph(DataHubGraphConfig(
 
 RAW = make_dataset_urn("hive", "raw_signups", "PROD")
 FCT = make_dataset_urn("hive", "fct_users_created", "PROD")
+FCT2 = make_dataset_urn("hive", "fct_users_created_v2", "PROD")
 NOW = int(time.time() * 1000)
+PROFILE_BOUNDARIES = [str(b) for b in range(0, 8)]  # 8 labels -> 7 bins, seconds-since-midnight-ish buckets
 
 
 def _field(path, native, t):
@@ -100,7 +107,39 @@ def seed_ml():
     print(f"[seed] {len(feat_urns)} features → user_features → churn_model")
 
 
+def seed_profiles():
+    """Block 1 (measured drift): give the OLD source (fct_users_created.signup_ts) and the NEW
+    source (fct_users_created_v2.ingest_ts) a real DatasetProfileClass field histogram, seeded so
+    drift.py can compute a real PSI over them via mnemo.agent's profile-gated drift_stat term.
+
+    Fixed seed, near-identical shape on purpose: this mirrors the run_ml_drift_demo.py hero case,
+    where the column is renamed but the underlying distribution barely moves (PSI stays near the
+    "stable" band) — the exact case where a PSI/KS-only monitor would stay green, and only Mnemo's
+    STRUCTURAL source-delta term catches the silent re-point.
+    """
+    old_samples = drift.sample(seed=42, n=2000, mean=3.5, stdev=1.2)
+    new_samples = drift.sample(seed=43, n=2000, mean=3.6, stdev=1.25)
+    boundaries = [float(b) for b in PROFILE_BOUNDARIES]
+    old_heights = drift.histogram(old_samples, boundaries)
+    new_heights = drift.histogram(new_samples, boundaries)
+
+    g.emit(MCP(entityUrn=FCT, aspect=DatasetProfileClass(
+        timestampMillis=NOW,
+        fieldProfiles=[DatasetFieldProfileClass(
+            fieldPath="signup_ts",
+            histogram=HistogramClass(boundaries=PROFILE_BOUNDARIES, heights=old_heights))])))
+    g.emit(MCP(entityUrn=FCT2, aspect=DatasetProfileClass(
+        timestampMillis=NOW,
+        fieldProfiles=[DatasetFieldProfileClass(
+            fieldPath="ingest_ts",
+            histogram=HistogramClass(boundaries=PROFILE_BOUNDARIES, heights=new_heights))])))
+    measured_psi = drift.psi(old_heights, new_heights)
+    print(f"[seed] field profiles: fct_users_created.signup_ts vs fct_users_created_v2.ingest_ts "
+          f"(measured PSI={measured_psi:.4f}, seed=42/43)")
+
+
 if __name__ == "__main__":
     seed_datasets()
     seed_ml()
+    seed_profiles()
     print("Demo graph seeded. Chain: raw_signups → fct_users_created → features → churn_model")

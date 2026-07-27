@@ -60,8 +60,9 @@ print("3. silent upstream re-point (same name/description)")
 seed(FCT2); time.sleep(1)
 
 print("4. agent.check_model_inputs → detect delta, re-score, govern")
-changed, remembered, now, belief2 = agent.check_model_inputs(MODEL)
-print(f"   changed={changed} · confidence→{belief2.confidence:.3f} · governance={agent.govern(belief2)}")
+changed, remembered, now, belief2, drift_info = agent.check_model_inputs(MODEL)
+drift_note = f" · measured drift={drift_info['psi']:.3f} PSI on {drift_info['field']}" if drift_info else ""
+print(f"   changed={changed} · confidence→{belief2.confidence:.3f} · governance={agent.govern(belief2)}{drift_note}")
 
 print("5. give the new source an upstream chain + observe it (so reflection has grounding)")
 RAW_A = make_dataset_urn("hive", "raw_events_a", "PROD")

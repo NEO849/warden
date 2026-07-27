@@ -32,7 +32,10 @@ Mnemo is a memory agent for DataHub that:
    catches the source-set delta anyway.
 3. **Updates belief with a principled Bayesian model** (`confidence_model.py`, pure stdlib): evidence
    accumulates in log-odds space, discounted by lineage distance, capped against flapping, and never
-   claims absolute certainty (Cromwell's rule).
+   claims absolute certainty (Cromwell's rule). When the swapped sources carry distribution profiles, a
+   **measured PSI/KS drift score** (`mnemo/drift.py`) is folded in as its own evidence term — so the
+   confidence *magnitude* is measured, not prior-only; when the profiles are quiet, the structural
+   source-delta term still fires, so Mnemo stays a **superset** of a PSI/KS drift monitor, never weaker.
 4. **Gates on governance, not vibes**: when confidence drops below threshold after a contradiction, Mnemo
    opens a **DataHub Proposal** — a human approval gate — instead of silently trusting (or silently
    re-writing) the model's metadata.
@@ -96,8 +99,6 @@ aspirational behavior as shipped.
 
 - Harden the eval realism — a raw-facts memory arm so the WITH score reflects the model *reasoning* rather
   than reading a near-explicit label (the current WITH=1.00 is a ceiling; see `examples/EVAL_NOTES.md`).
-- Feed a measured distribution-drift statistic (PSI/KS) as a Bayesian evidence term, so the confidence
-  *magnitude* is measured, not prior-driven.
 - Get `EntityChangeEvent_v1` reaching the custom Action reliably (currently a polling fallback).
 - Upstream a DataHub Skill / RFC proposing "agent memory + confidence via structured properties."
 
