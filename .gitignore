@@ -1,0 +1,17 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# Secrets / local config
+.env
+*.token
+
+# Logs (keep committed golden logs explicitly if needed)
+*.err.log
+
+# OS
+.DS_Store

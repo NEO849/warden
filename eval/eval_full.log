@@ -1,0 +1,74 @@
+  WITHOUT  case0 gold=DRIFT    pred=NO_RISK
+  WITHOUT  case1 gold=DRIFT    pred=NO_RISK
+  WITHOUT  case2 gold=DRIFT    pred=NO_RISK
+  WITHOUT  case3 gold=DRIFT    pred=NO_RISK
+  WITHOUT  case4 gold=DRIFT    pred=DRIFT
+  WITHOUT  case5 gold=LEAKAGE  pred=LEAKAGE
+  WITHOUT  case6 gold=LEAKAGE  pred=NO_RISK
+  WITHOUT  case7 gold=LEAKAGE  pred=LEAKAGE
+  WITHOUT  case8 gold=LEAKAGE  pred=NO_RISK
+  WITHOUT  case9 gold=LEAKAGE  pred=NO_RISK
+  WITHOUT  case10 gold=NO_RISK  pred=NO_RISK
+  WITHOUT  case11 gold=NO_RISK  pred=NO_RISK
+  WITHOUT  case12 gold=NO_RISK  pred=NO_RISK
+  WITHOUT  case13 gold=NO_RISK  pred=NO_RISK
+  WITHOUT  case14 gold=NO_RISK  pred=NO_RISK
+  >>> WITHOUT: acc=0.533 macro_f1=0.498
+
+  WITH     case0 gold=DRIFT    pred=DRIFT
+  WITH     case1 gold=DRIFT    pred=DRIFT
+  WITH     case2 gold=DRIFT    pred=DRIFT
+  WITH     case3 gold=DRIFT    pred=DRIFT
+  WITH     case4 gold=DRIFT    pred=DRIFT
+  WITH     case5 gold=LEAKAGE  pred=LEAKAGE
+  WITH     case6 gold=LEAKAGE  pred=LEAKAGE
+  WITH     case7 gold=LEAKAGE  pred=LEAKAGE
+  WITH     case8 gold=LEAKAGE  pred=LEAKAGE
+  WITH     case9 gold=LEAKAGE  pred=LEAKAGE
+  WITH     case10 gold=NO_RISK  pred=NO_RISK
+  WITH     case11 gold=NO_RISK  pred=NO_RISK
+  WITH     case12 gold=NO_RISK  pred=NO_RISK
+  WITH     case13 gold=NO_RISK  pred=NO_RISK
+  WITH     case14 gold=NO_RISK  pred=NO_RISK
+  >>> WITH: acc=1.0 macro_f1=1.0
+
+  PLACEBO  case0 gold=DRIFT    pred=NO_RISK
+  PLACEBO  case1 gold=DRIFT    pred=NO_RISK
+  PLACEBO  case2 gold=DRIFT    pred=NO_RISK
+  PLACEBO  case3 gold=DRIFT    pred=NO_RISK
+  PLACEBO  case4 gold=DRIFT    pred=NO_RISK
+  PLACEBO  case5 gold=LEAKAGE  pred=NO_RISK
+  PLACEBO  case6 gold=LEAKAGE  pred=NO_RISK
+  PLACEBO  case7 gold=LEAKAGE  pred=NO_RISK
+  PLACEBO  case8 gold=LEAKAGE  pred=NO_RISK
+  PLACEBO  case9 gold=LEAKAGE  pred=NO_RISK
+  PLACEBO  case10 gold=NO_RISK  pred=NO_RISK
+  PLACEBO  case11 gold=NO_RISK  pred=NO_RISK
+  PLACEBO  case12 gold=NO_RISK  pred=NO_RISK
+  PLACEBO  case13 gold=NO_RISK  pred=NO_RISK
+  PLACEBO  case14 gold=NO_RISK  pred=NO_RISK
+  >>> PLACEBO: acc=0.333 macro_f1=0.167
+
+=== SUMMARY ===
+{
+  "model": "default",
+  "n_per_arm": 15,
+  "results": {
+    "WITHOUT": {
+      "accuracy": 0.533,
+      "macro_f1": 0.498,
+      "n": 15
+    },
+    "WITH": {
+      "accuracy": 1.0,
+      "macro_f1": 1.0,
+      "n": 15
+    },
+    "PLACEBO": {
+      "accuracy": 0.333,
+      "macro_f1": 0.167,
+      "n": 15
+    }
+  },
+  "lift_accuracy": 0.467
+}

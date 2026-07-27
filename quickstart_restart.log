@@ -1,0 +1,78 @@
+Python versions above 3.11 are not actively tested with yet. Please use Python 3.11 for now.
+[2026-07-24 10:57:42,440] INFO     {datahub.cli.quickstart_versioning:311} - Saved quickstart config to /root/.datahub/quickstart/quickstart_version_mapping.yaml.
+[2026-07-24 10:57:42,445] INFO     {datahub.cli.docker_cli:684} - Using quickstart plan: composefile_git_ref='v1.5.0.6' docker_tag='v1.5.0.6' mysql_tag='8.2'
+[2026-07-24 10:57:43,326] INFO     {datahub.cli.docker_cli:702} - compose file name /root/.datahub/quickstart/docker-compose.yml
+[2026-07-24 10:57:43,327] INFO     {datahub.cli.docker_cli:887} - Fetching docker-compose file https://raw.githubusercontent.com/datahub-project/datahub/v1.5.0.6/docker/quickstart/docker-compose.quickstart-profile.yml from GitHub
+base_command: ['docker', 'compose', '--profile', 'quickstart', '-f', '/root/.datahub/quickstart/docker-compose.yml', '-p', 'datahub']
+
+Pulling docker images... 
+This may take a while depending on your network bandwidth.
+ Image mysql:8.2 Pulling 
+ Image acryldata/datahub-actions:v1.5.0.6-slim Pulling 
+ Image acryldata/datahub-frontend-react:v1.5.0.6 Pulling 
+ Image acryldata/datahub-upgrade:v1.5.0.6 Pulling 
+ Image opensearchproject/opensearch:2.19.3 Pulling 
+ Image confluentinc/cp-kafka:8.0.0 Pulling 
+ Image acryldata/datahub-gms:v1.5.0.6 Pulling 
+ Image acryldata/datahub-frontend-react:v1.5.0.6 Pulled 
+ Image acryldata/datahub-upgrade:v1.5.0.6 Pulled 
+ Image opensearchproject/opensearch:2.19.3 Pulled 
+ Image confluentinc/cp-kafka:8.0.0 Pulled 
+ Image acryldata/datahub-actions:v1.5.0.6-slim Pulled 
+ Image acryldata/datahub-gms:v1.5.0.6 Pulled 
+ Image mysql:8.2 Pulled 
+Finished pulling docker images!
+
+Starting up DataHub...
+ Container datahub-mysql-1 Starting 
+ Container datahub-opensearch-1 Starting 
+ Container datahub-kafka-broker-1 Starting 
+ Container datahub-opensearch-1 Started 
+ Container datahub-mysql-1 Started 
+ Container datahub-kafka-broker-1 Started 
+ Container datahub-opensearch-1 Waiting 
+ Container datahub-kafka-broker-1 Waiting 
+ Container datahub-mysql-1 Waiting 
+ Container datahub-opensearch-1 Healthy 
+ Container datahub-mysql-1 Healthy 
+ Container datahub-kafka-broker-1 Healthy 
+ Container datahub-system-update-quickstart-1 Starting 
+ Container datahub-system-update-quickstart-1 Started 
+ Container datahub-system-update-quickstart-1 Waiting 
+ Container datahub-system-update-quickstart-1 Waiting 
+ Container datahub-system-update-quickstart-1 Exited 
+ Container datahub-system-update-quickstart-1 Exited 
+ Container datahub-frontend-quickstart-1 Starting 
+ Container datahub-datahub-gms-quickstart-1 Starting 
+ Container datahub-datahub-gms-quickstart-1 Started 
+ Container datahub-datahub-gms-quickstart-1 Waiting 
+ Container datahub-frontend-quickstart-1 Started 
+ Container datahub-datahub-actions-quickstart-1 Starting 
+
+.
+ Container datahub-opensearch-1 Running 
+ Container datahub-kafka-broker-1 Running 
+ Container datahub-mysql-1 Running 
+ Container datahub-frontend-quickstart-1 Running 
+ Container datahub-datahub-gms-quickstart-1 Running 
+ Container datahub-kafka-broker-1 Waiting 
+ Container datahub-mysql-1 Waiting 
+ Container datahub-opensearch-1 Waiting 
+ Container datahub-mysql-1 Healthy 
+ Container datahub-kafka-broker-1 Healthy 
+ Container datahub-opensearch-1 Healthy 
+ Container datahub-system-update-quickstart-1 Starting 
+ Container datahub-system-update-quickstart-1 Started 
+ Container datahub-system-update-quickstart-1 Waiting 
+ Container datahub-system-update-quickstart-1 Waiting 
+ Container datahub-system-update-quickstart-1 Exited 
+ Container datahub-system-update-quickstart-1 Exited 
+ Container datahub-datahub-gms-quickstart-1 Waiting 
+ Container datahub-datahub-gms-quickstart-1 Healthy 
+ Container datahub-datahub-actions-quickstart-1 Starting 
+ Container datahub-datahub-actions-quickstart-1 Started 
+
+✔ DataHub is now running
+Load sample data: run `datahub init` then `datahub datapack load showcase-ecommerce`,
+or head to http://localhost:9002 (username: datahub, password: datahub) to play around with the frontend.
+Need support? Get in touch on Slack: https://datahub.com/slack/

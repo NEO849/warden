@@ -1,0 +1,22 @@
+{
+  "model": "default",
+  "n_per_arm": 15,
+  "results": {
+    "WITHOUT": {
+      "accuracy": 0.533,
+      "macro_f1": 0.498,
+      "n": 15
+    },
+    "WITH": {
+      "accuracy": 1.0,
+      "macro_f1": 1.0,
+      "n": 15
+    },
+    "PLACEBO": {
+      "accuracy": 0.333,
+      "macro_f1": 0.167,
+      "n": 15
+    }
+  },
+  "lift_accuracy": 0.467
+}

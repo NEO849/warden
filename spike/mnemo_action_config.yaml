@@ -1,0 +1,37 @@
+# Mnemo Action pipeline — SOURCE-VERIFIED against datahub-actions examples
+# (hello_world.yaml, doc_propagation_action.yaml). Run: datahub actions -c mnemo_action_config.yaml
+name: mnemo
+
+# Source = DataHub's metadata event stream (Kafka; shipped by quickstart).
+source:
+  type: "kafka"
+  config:
+    connection:
+      bootstrap: ${KAFKA_BOOTSTRAP_SERVER:-localhost:9092}
+      schema_registry_url: ${SCHEMA_REGISTRY_URL:-http://localhost:8081}
+    topic_routes:
+      mcl: MetadataChangeLog_Versioned_v1
+      pe: PlatformEvent_v1
+
+# Only wake on schema + documentation change events (extend as needed).
+filters:
+  - type: event_type
+    config:
+      filter:
+        EntityChangeEvent_v1:
+          event:
+            - category: "TAG"
+            - category: "TECHNICAL_SCHEMA"
+            - category: "DOCUMENTATION"
+            - category: "GLOSSARY_TERM"
+            - category: "OWNER"
+
+action:
+  type: "mnemo_action:MnemoAction"
+
+datahub:
+  server: "http://localhost:8080"
+
+# --- FALLBACK (if Kafka/schema-registry access fights the day-3 gate) ---
+# Drop the kafka source; drive from a polling loop over `graph.get_urns_by_filter`
+# + lastModified in a plain script. Note the fallback in ARCHITECTURE.md §5 and move on.

@@ -1,0 +1,135 @@
+#!/usr/bin/env python3
+"""
+Context-lift eval: does Mnemo's MEMORY measurably improve ML-risk triage accuracy?
+
+Task: classify each (upstream change, model) as DRIFT / LEAKAGE / NO_RISK.
+Arms (same local Ollama model, temp 0, identical prompt except the memory block):
+  WITHOUT  = raw metadata only (schema, lineage, the change)
+  WITH     = raw metadata + Mnemo memory (prior source-set + confidence; reflection)  ← the lift
+  PLACEBO  = raw metadata + an UNRELATED asset's memory (equal budget) → controls for "more text"
+
+Fairness: the memory block gives REMEMBERED STATE, never the label. The model must still reason
+(e.g. "remembered source ≠ current source → DRIFT"). Deterministic cases + fixed order + a
+non-LLM scorer → a judge can recompute the bar from eval/results.csv.
+
+Run:  python eval/run_eval.py         (needs Ollama; ~36s/call on CPU → runs best in background)
+Env:  EVAL_N (cases, default 6), OLLAMA_MODEL
+"""
+import csv
+import json
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from mnemo.llm import ollama_json
+
+CLASSES = ["DRIFT", "LEAKAGE", "NO_RISK"]
+SYSTEM = ("You are an ML production-risk triage agent. Given metadata about a model and a recent "
+          "change to its data lineage, classify the risk to the model as EXACTLY one of "
+          "DRIFT (a training input's meaning/source silently changed), "
+          "LEAKAGE (a feature's lineage reaches the label/target), or "
+          "NO_RISK (the change does not affect this model's inputs). "
+          'Output STRICT JSON: {"label": "DRIFT"|"LEAKAGE"|"NO_RISK"}.')
+
+# 15 genuinely-distinct labeled cases (5/class), mixed difficulty incl. hard cases where memory is
+# weak/ambiguous so WITH is not trivially perfect. raw = facts shown to ALL arms; mem = Mnemo memory.
+# The memory gives REMEMBERED STATE, never the label — the model must still reason.
+_BASE = [
+    # ---- DRIFT (5) ----
+    {"label": "DRIFT", "raw": "Model churn_model uses feature days_since_signup; lineage sources=[fct_users_v2]; schema looks normal, no error.",
+     "mem": "Memory on days_since_signup: previously sourced from [fct_users] at confidence 0.90 (2 events). Current source [fct_users_v2] differs."},
+    {"label": "DRIFT", "raw": "Model ltv_model uses feature avg_order_value; column type is now string; no rename.",
+     "mem": "Memory: avg_order_value was type decimal at confidence 0.88; it is now string — same name, changed type."},
+    {"label": "DRIFT", "raw": "Model ranking_model uses feature ctr_7d; upstream table events re-pointed to events_clone; both look identical.",
+     "mem": "Memory (LOW confidence 0.55): ctr_7d source may have changed from events to events_clone; not strongly corroborated."},
+    {"label": "DRIFT", "raw": "Model credit_model uses feature income_bucket; upstream applies a new bucketing threshold; column name unchanged.",
+     "mem": "Memory: income_bucket boundaries changed vs remembered distribution (confidence 0.82); semantics shifted under a stable name."},
+    {"label": "DRIFT", "raw": "Model demand_model uses feature region_code; upstream ref table swapped from geo_v1 to geo_v3; values remap silently.",
+     "mem": "Memory: region_code encoded via geo_v1 at confidence 0.9; now geo_v3 — remembered mapping differs."},
+    # ---- LEAKAGE (5) ----
+    {"label": "LEAKAGE", "raw": "Model fraud_model uses feature risk_score; lineage risk_score.sources=[txn_enriched]; txn_enriched upstream=[txn_raw, label_fraud_outcome]; training label=label_fraud_outcome.",
+     "mem": "Memory: risk_score's lineage transitively reaches the model's label dataset label_fraud_outcome (confidence 0.85)."},
+    {"label": "LEAKAGE", "raw": "Model churn_model2 adds feature will_cancel_flag computed post-subscription-end; label is churned_30d.",
+     "mem": "Memory: will_cancel_flag is derived after the outcome window that defines churned_30d (confidence 0.8) — temporal leakage."},
+    {"label": "LEAKAGE", "raw": "Model default_model uses feature acct_status; acct_status.sources=[collections]; collections is downstream of default_label.",
+     "mem": "Memory: acct_status upstream includes collections, which is computed from default_label (confidence 0.83)."},
+    {"label": "LEAKAGE", "raw": "Model conv_model uses feature refund_amount; refunds only exist after conversion; target is converted.",
+     "mem": "Memory: refund_amount is populated only for converted users — availability correlates with the target (confidence 0.78)."},
+    {"label": "LEAKAGE", "raw": "Model lead_model uses feature sales_touch_count; sales only touch qualified leads; label is qualified.",
+     "mem": "Memory: sales_touch_count is a consequence of qualification, not a cause (confidence 0.7) — reaches the label."},
+    # ---- NO_RISK (5) ----
+    {"label": "NO_RISK", "raw": "Model reco_model uses feature affinity sources=[catalog]. Event: column internal_note modified on audit_log; audit_log not in lineage.",
+     "mem": "Memory: no input of reco_model depends on audit_log (confidence 0.90)."},
+    {"label": "NO_RISK", "raw": "Model churn_model source table fct_users was RENAMED to fct_users (curated); underlying data identical, alias kept.",
+     "mem": "Memory: fct_users and fct_users(curated) are the same physical data via alias (confidence 0.9); no semantic change."},
+    {"label": "NO_RISK", "raw": "Model ltv_model: a deprecated feature legacy_score (not in the model's feature list) changed upstream.",
+     "mem": "Memory: legacy_score is not consumed by ltv_model (confidence 0.92)."},
+    {"label": "NO_RISK", "raw": "Model ranking_model: a column description was edited on an upstream table; no schema or lineage change.",
+     "mem": "Memory: cosmetic doc-only edit; ranking_model inputs unchanged (confidence 0.9)."},
+    {"label": "NO_RISK", "raw": "Model demand_model: a new column added to an upstream table; existing consumed columns untouched.",
+     "mem": "Memory: added column is not consumed by demand_model; existing inputs stable (confidence 0.88)."},
+]
+PLACEBO = ("Memory on unrelated asset marketing_dashboard: refreshed nightly, owned by growth team, "
+           "tier GOLD, confidence 0.88. No relation to this model.")
+
+
+def cases(n):
+    return [{"id": f"case{i}", "label": _BASE[i]["label"], "raw": _BASE[i]["raw"], "mem": _BASE[i]["mem"]}
+            for i in range(min(n, len(_BASE)))]
+
+
+def classify(context):
+    try:
+        data = ollama_json(f"METADATA:\n{context}\n\nClassify the risk.", SYSTEM)
+        lab = str(data.get("label", "")).upper().strip()
+        return lab if lab in CLASSES else "NO_RISK"
+    except Exception as e:
+        return f"ERROR:{type(e).__name__}"
+
+
+def macro_f1(pairs):
+    f1s = []
+    for c in CLASSES:
+        tp = sum(1 for g, p in pairs if g == c and p == c)
+        fp = sum(1 for g, p in pairs if g != c and p == c)
+        fn = sum(1 for g, p in pairs if g == c and p != c)
+        prec = tp / (tp + fp) if tp + fp else 0.0
+        rec = tp / (tp + fn) if tp + fn else 0.0
+        f1s.append(2 * prec * rec / (prec + rec) if prec + rec else 0.0)
+    return sum(f1s) / len(f1s)
+
+
+def main():
+    n = int(os.getenv("EVAL_N", "6"))
+    data = cases(n)
+    arms = {"WITHOUT": lambda c: c["raw"],
+            "WITH": lambda c: c["raw"] + "\n\nMEMORY:\n" + c["mem"],
+            "PLACEBO": lambda c: c["raw"] + "\n\nMEMORY:\n" + PLACEBO}
+    rows, results = [], {}
+    for arm, render in arms.items():
+        pairs = []
+        for c in data:
+            pred = classify(render(c))
+            pairs.append((c["label"], pred))
+            rows.append({"arm": arm, "id": c["id"], "gold": c["label"], "pred": pred})
+            print(f"  {arm:8} {c['id']} gold={c['label']:8} pred={pred}")
+        clean = [(g, p) for g, p in pairs if not p.startswith("ERROR")]
+        acc = sum(1 for g, p in clean if g == p) / len(clean) if clean else 0.0
+        results[arm] = {"accuracy": round(acc, 3), "macro_f1": round(macro_f1(clean), 3),
+                        "n": len(clean)}
+        print(f"  >>> {arm}: acc={results[arm]['accuracy']} macro_f1={results[arm]['macro_f1']}\n")
+
+    outdir = os.path.dirname(os.path.abspath(__file__))
+    with open(os.path.join(outdir, "results.csv"), "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["arm", "id", "gold", "pred"])
+        w.writeheader(); w.writerows(rows)
+    summary = {"model": os.getenv("OLLAMA_MODEL", "default"), "n_per_arm": n, "results": results,
+               "lift_accuracy": round(results["WITH"]["accuracy"] - results["WITHOUT"]["accuracy"], 3)}
+    with open(os.path.join(os.path.dirname(outdir), "examples", "eval_summary.json"), "w") as f:
+        json.dump(summary, f, indent=2)
+    print("=== SUMMARY ===")
+    print(json.dumps(summary, indent=2))
+
+
+if __name__ == "__main__":
+    main()

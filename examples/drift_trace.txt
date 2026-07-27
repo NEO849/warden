@@ -1,0 +1,23 @@
+=== BEAT 1: seed graph + establish healthy model memory ===
+   model memory established: confidence 0.901, remembered sources ['urn:li:dataset:(urn:li:dataPlatform:hive,fct_users_created,PROD)']
+
+=== BEAT 2: harmful change lands, looks harmless ===
+   feature 'days_since_signup' silently re-pointed fct_users_created → fct_users_created_v2
+   (name unchanged, description unchanged — a schema-diff sees nothing)
+
+=== BEAT 3-4: Mnemo wakes, compares to memory, re-scores, governs ===
+   remembered: ['urn:li:dataset:(urn:li:dataPlatform:hive,fct_users_created,PROD)']
+   now:        ['urn:li:dataset:(urn:li:dataPlatform:hive,fct_users_created_v2,PROD)']
+   source delta detected: True
+   confidence 0.901 → 0.600
+   ⚠️  below governance threshold (0.7) → OPEN DATAHUB PROPOSAL (no silent auto-trust)
+
+=== BEAT 5: payoff ===
+   Caught before the next training run baked the drift into prod —
+   because Mnemo REMEMBERED the prior source. A one-shot tool cannot see a
+   delta under an unchanged schema.
+
+ML-DRIFT DEMO GREEN ✅
+   [honesty] REAL = the source-delta detection (live lineage vs remembered source, which a schema-diff
+             cannot see). The confidence MAGNITUDE (→0.60) is set by the Bayesian priors
+             (contradicting schema evidence), not a measured drift score.

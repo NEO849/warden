@@ -1,0 +1,48 @@
+# Mnemo memory as DataHub Structured Properties (no GMS rebuild).
+# Apply with:  datahub properties upsert -f mnemo_memory_property.yaml
+# VERIFY field names/format against audit_source.md on day 1 — DataHub tightens this schema over releases.
+
+- id: mnemo_summary
+  qualified_name: mnemo.summary
+  display_name: "Mnemo: Memory Summary"
+  type: string
+  cardinality: SINGLE
+  entity_types:
+    - dataset
+  description: "Agent's current memory of what this asset is (natural language)."
+
+- id: mnemo_confidence
+  qualified_name: mnemo.confidence
+  display_name: "Mnemo: Confidence"
+  type: number
+  cardinality: SINGLE
+  entity_types:
+    - dataset
+  description: "Confidence in [0,1] from the Bayesian evidence model."
+
+- id: mnemo_provenance
+  qualified_name: mnemo.provenance
+  display_name: "Mnemo: Provenance Chain"
+  type: string
+  cardinality: MULTIPLE
+  entity_types:
+    - dataset
+  description: "Ordered evidence events that grounded/updated this memory (JSON strings)."
+
+- id: mnemo_agent_version
+  qualified_name: mnemo.agentVersion
+  display_name: "Mnemo: Agent Version"
+  type: string
+  cardinality: SINGLE
+  entity_types:
+    - dataset
+  description: "Which Mnemo version wrote this memory (reproducibility)."
+
+- id: mnemo_last_event
+  qualified_name: mnemo.lastEvent
+  display_name: "Mnemo: Last Revisit Event"
+  type: string
+  cardinality: SINGLE
+  entity_types:
+    - dataset
+  description: "The metadata event that last caused a re-visit/re-score."

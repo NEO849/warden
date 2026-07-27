@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 320" font-family="sans-serif">
+<rect width="520" height="320" fill="#1b1f27" rx="8"/>
+<text x="60" y="34" font-size="17" font-weight="bold" fill="#e6e6e6">ML-risk triage: memory-context ablation</text>
+<text x="60" y="54" font-size="12" fill="#8a93a2">Controlled ablation (not a prod benchmark). Key result: PLACEBO &lt; WITHOUT → lift is relevant memory, not tokens. N=15</text>
+<line x1="60" y1="260" x2="460" y2="260" stroke="#3a414d"/>
+<rect x="60" y="153" width="90" height="107" fill="#9aa4b2" rx="4"/><text x="105" y="145" text-anchor="middle" font-size="18" font-weight="bold" fill="#e6e6e6">0.53</text><text x="105" y="282" text-anchor="middle" font-size="14" fill="#b8c0cc">WITHOUT</text><text x="105" y="300" text-anchor="middle" font-size="11" fill="#8a93a2">F1 0.50</text><rect x="190" y="193" width="90" height="67" fill="#e06c75" rx="4"/><text x="235" y="185" text-anchor="middle" font-size="18" font-weight="bold" fill="#e6e6e6">0.33</text><text x="235" y="282" text-anchor="middle" font-size="14" fill="#b8c0cc">PLACEBO</text><text x="235" y="300" text-anchor="middle" font-size="11" fill="#8a93a2">F1 0.17</text><rect x="320" y="60" width="90" height="200" fill="#4c9f70" rx="4"/><text x="365" y="52" text-anchor="middle" font-size="18" font-weight="bold" fill="#e6e6e6">1.00</text><text x="365" y="282" text-anchor="middle" font-size="14" fill="#b8c0cc">WITH</text><text x="365" y="300" text-anchor="middle" font-size="11" fill="#8a93a2">F1 1.00</text>
+</svg>

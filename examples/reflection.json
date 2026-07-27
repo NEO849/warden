@@ -1,0 +1,19 @@
+{
+  "insights": [
+    {
+      "statement": "Model inputs are corroborated across lineage.",
+      "confidence": 0.912,
+      "mass": 0.811,
+      "evidence_urns": [
+        "urn:li:dataset:(urn:li:dataPlatform:hive,refl_dsA,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:hive,refl_dsB,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:hive,refl_dsC,PROD)"
+      ],
+      "generated_from_events": [],
+      "gate": "needs_review"
+    }
+  ],
+  "graph_fingerprint": "e50123da48c3",
+  "agentVersion": "mnemo-0.1",
+  "timestamp": 1784884030
+}

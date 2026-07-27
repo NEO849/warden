@@ -1,0 +1,47 @@
+  WITHOUT  case0 gold=DRIFT    pred=NO_RISK
+  WITHOUT  case1 gold=LEAKAGE  pred=LEAKAGE
+  WITHOUT  case2 gold=NO_RISK  pred=NO_RISK
+  WITHOUT  case3 gold=DRIFT    pred=NO_RISK
+  WITHOUT  case4 gold=LEAKAGE  pred=LEAKAGE
+  WITHOUT  case5 gold=NO_RISK  pred=NO_RISK
+  >>> WITHOUT: acc=0.667 macro_f1=0.556
+
+  WITH     case0 gold=DRIFT    pred=DRIFT
+  WITH     case1 gold=LEAKAGE  pred=LEAKAGE
+  WITH     case2 gold=NO_RISK  pred=NO_RISK
+  WITH     case3 gold=DRIFT    pred=DRIFT
+  WITH     case4 gold=LEAKAGE  pred=LEAKAGE
+  WITH     case5 gold=NO_RISK  pred=NO_RISK
+  >>> WITH: acc=1.0 macro_f1=1.0
+
+  PLACEBO  case0 gold=DRIFT    pred=NO_RISK
+  PLACEBO  case1 gold=LEAKAGE  pred=NO_RISK
+  PLACEBO  case2 gold=NO_RISK  pred=NO_RISK
+  PLACEBO  case3 gold=DRIFT    pred=NO_RISK
+  PLACEBO  case4 gold=LEAKAGE  pred=NO_RISK
+  PLACEBO  case5 gold=NO_RISK  pred=NO_RISK
+  >>> PLACEBO: acc=0.333 macro_f1=0.167
+
+=== SUMMARY ===
+{
+  "model": "default",
+  "n_per_arm": 6,
+  "results": {
+    "WITHOUT": {
+      "accuracy": 0.667,
+      "macro_f1": 0.556,
+      "n": 6
+    },
+    "WITH": {
+      "accuracy": 1.0,
+      "macro_f1": 1.0,
+      "n": 6
+    },
+    "PLACEBO": {
+      "accuracy": 0.333,
+      "macro_f1": 0.167,
+      "n": 6
+    }
+  },
+  "lift_accuracy": 0.333
+}
