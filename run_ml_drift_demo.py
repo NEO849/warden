@@ -21,6 +21,7 @@ from datahub.emitter.mcp import MetadataChangeProposalWrapper as MCP
 from datahub.emitter.mce_builder import make_dataset_urn
 from datahub.ingestion.graph.client import DataHubGraph, DataHubGraphConfig
 from datahub.metadata.schema_classes import (
+    GlobalTagsClass,
     MLFeaturePropertiesClass,
     MLFeatureTablePropertiesClass,
     MLModelPropertiesClass,
@@ -30,9 +31,11 @@ from datahub.metadata.schema_classes import (
     SchemaFieldDataTypeClass,
     SchemaMetadataClass,
     StringTypeClass,
+    StructuredPropertiesClass,
 )
 
 from confidence_model import Belief
+from mnemo.agent import MnemoAgent
 from mnemo.memory import MnemoMemory
 
 load_dotenv()
@@ -41,6 +44,7 @@ g = DataHubGraph(DataHubGraphConfig(
     token=os.getenv("DATAHUB_GMS_TOKEN") or None,
 ))
 mem = MnemoMemory(g)
+agent = MnemoAgent(g)
 
 FCT = make_dataset_urn("hive", "fct_users_created", "PROD")
 FCT2 = make_dataset_urn("hive", "fct_users_created_v2", "PROD")
@@ -83,6 +87,7 @@ remembered = model_input_sources()
 mem.save(MODEL, json.dumps({"desc": "inputs healthy: days_since_signup ← fct_users_created",
                             "input_sources": remembered}), b, "init2")
 print(f"   model memory established: confidence {b.confidence:.3f}, remembered sources {remembered}")
+description_before = g.get_aspect(MODEL, MLModelPropertiesClass).description
 
 print("\n=== BEAT 2: harmful change lands, looks harmless ===")
 g.emit(MCP(entityUrn=FCT2, aspect=_schema("fct_users_created_v2",
@@ -107,7 +112,26 @@ if changed:
                                 "input_sources": now}), b2, "drift")
     print(f"   confidence {b.confidence:.3f} → {b2.confidence:.3f}")
     if b2.needs_proposal():
-        print("   ⚠️  below governance threshold (0.7) → OPEN DATAHUB PROPOSAL (no silent auto-trust)")
+        result = agent.actuate_governance(MODEL, b2)
+        print(f"   ⚠️  confidence {b2.confidence:.3f} < 0.70 → verdict={result['verdict']} "
+              f"(OSS has no ActionRequest/Proposal entity — that's Cloud-only; this is the honest "
+              f"OSS-native human gate instead)")
+        print(f"   wrote mnemo.governance_status={result['governance_status']} + tag "
+              f"{result['tag']} ({result['tag_action']}) on {MODEL}")
+        print("   (a human-visible review gate — the model's own description is never touched)")
+        # live read-back from the graph — proof this is a real write, not a print
+        sp_after = g.get_aspect(MODEL, StructuredPropertiesClass)
+        gov_status_live = None
+        for p in (sp_after.properties if sp_after else []):
+            if p.propertyUrn.endswith("mnemo.governance_status"):
+                gov_status_live = p.values[0] if p.values else None
+        tags_after = g.get_aspect(MODEL, GlobalTagsClass)
+        tag_urns_live = [t.tag for t in tags_after.tags] if tags_after and tags_after.tags else []
+        print(f"   [read-back from GMS] mnemo.governance_status={gov_status_live!r}  "
+              f"globalTags={tag_urns_live}")
+        description_after = g.get_aspect(MODEL, MLModelPropertiesClass).description
+        print(f"   [description untouched] before={description_before!r} after={description_after!r} "
+              f"unchanged={description_before == description_after}")
     print("\n=== BEAT 5: payoff ===")
     print("   Caught before the next training run baked the drift into prod —")
     print("   because Mnemo REMEMBERED the prior source. A one-shot tool cannot see a")

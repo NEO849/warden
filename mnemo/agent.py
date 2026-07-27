@@ -11,10 +11,14 @@ Read layer via DataHubReader; memory persisted on the graph via MnemoMemory; con
 """
 import json
 
+from datahub.emitter.mcp import MetadataChangeProposalWrapper as MCP
 from datahub.metadata.schema_classes import (
     DatasetProfileClass,
+    GlobalTagsClass,
     MLFeaturePropertiesClass,
     MLModelPropertiesClass,
+    TagAssociationClass,
+    TagPropertiesClass,
 )
 
 from confidence_model import Belief
@@ -22,6 +26,12 @@ from mnemo import drift
 from mnemo.memory import MnemoMemory
 from mnemo.reader import DataHubReader
 from mnemo.reflection import reflect, define_reflection_property
+
+# The real, OSS-native "human gate" tag Mnemo puts on a model it doesn't trust yet. There is no
+# ActionRequest/Proposal entity in OSS DataHub (that class of object is Cloud-only) — a tag +
+# Mnemo's own structured property is the honest OSS equivalent: a visible, queryable review flag
+# on the graph instead of a print statement nobody can see or act on.
+NEEDS_REVIEW_TAG_URN = "urn:li:tag:mnemo-needs-review"
 
 
 class MnemoAgent:
@@ -35,6 +45,18 @@ class MnemoAgent:
     def setup(self):
         self.memory.define_properties()
         define_reflection_property(self.g)
+        self._define_needs_review_tag()
+
+    def _define_needs_review_tag(self):
+        """Idempotent, cosmetic-only: gives the tag entity a human-readable name/description in the
+        DataHub UI. Not required for the tag ASSOCIATION in actuate_governance() to work."""
+        self.g.emit(MCP(entityUrn=NEEDS_REVIEW_TAG_URN, aspect=TagPropertiesClass(
+            name="Mnemo: Needs Review",
+            description="Mnemo's confidence in this model's current inputs fell below the "
+                        "governance threshold (τ=0.70) after contradicting evidence (e.g. a "
+                        "silent upstream source re-point). A human should review before the model's "
+                        "lineage is trusted again.",
+        )))
 
     # --- compounding memory: fold new evidence into an asset's persisted belief ---
     def observe(self, urn, evidence, summary=None, event_id="obs"):
@@ -150,3 +172,63 @@ class MnemoAgent:
         if belief.needs_proposal():
             return "open-proposal"
         return "needs-review"
+
+    # --- governance ACTUATION: turn the govern() verdict into a real, visible graph action ---
+    def actuate_governance(self, model_urn: str, belief: Belief) -> dict:
+        """Confidence-gated, OSS-native governance signal — replaces a mere print statement with a
+        real write the DataHub UI shows immediately.
+
+        There is no ActionRequest/Proposal entity in the OSS DataHub SDK — real Proposals are a
+        Cloud-only feature. The honest OSS-native "human gate" this method actually emits is two
+        things, both owned entirely by Mnemo:
+          (a) `mnemo.governance_status` structured property on the model  (NEEDS_REVIEW | TRUSTED)
+          (b) the GlobalTag `mnemo-needs-review` on the model, present only while NEEDS_REVIEW is
+              the result of a genuine contradiction (govern() == "open-proposal")
+
+        Verdict -> action (govern(belief) is the single source of truth for the verdict itself):
+          open-proposal (confidence < 0.70, belief.needs_proposal()):
+              governance_status=NEEDS_REVIEW, tag ADDED if not already present.
+          needs-review (mid-band, neither threshold hit):
+              governance_status=NEEDS_REVIEW, tag left as-is — not contradicted enough to demand
+              review, just not confident enough to auto-write.
+          auto-write (belief.actionable_high):
+              governance_status=TRUSTED, tag REMOVED if present.
+
+        HARD INVARIANT — this method NEVER writes MLModelPropertiesClass.description, or any other
+        editable/owner-authored metadata on the model. It only ever writes Mnemo's OWN mnemo.*
+        structured property and its OWN tag. That is the literal mechanism behind "never silently
+        trusts/rewrites the model's metadata": read MLModelPropertiesClass.description before and
+        after any call to this method and it must come back byte-identical.
+
+        Returns what was actually emitted (for demo/readback), e.g.:
+          {"verdict": "open-proposal", "governance_status": "NEEDS_REVIEW",
+           "tag": "urn:li:tag:mnemo-needs-review", "tag_action": "added"}
+        """
+        verdict = self.govern(belief)
+        status = "TRUSTED" if verdict == "auto-write" else "NEEDS_REVIEW"
+        want_tag = verdict == "open-proposal"
+
+        self.memory.set_governance_status(model_urn, status)
+
+        current = self.g.get_aspect(model_urn, GlobalTagsClass)
+        tags = list(current.tags) if current and current.tags else []
+        has_tag = any(t.tag == NEEDS_REVIEW_TAG_URN for t in tags)
+
+        if want_tag and not has_tag:
+            self._define_needs_review_tag()  # idempotent: label the tag entity before referencing it
+            tags.append(TagAssociationClass(tag=NEEDS_REVIEW_TAG_URN))
+            self.g.emit(MCP(entityUrn=model_urn, aspect=GlobalTagsClass(tags=tags)))
+            tag_action = "added"
+        elif not want_tag and has_tag:
+            tags = [t for t in tags if t.tag != NEEDS_REVIEW_TAG_URN]
+            self.g.emit(MCP(entityUrn=model_urn, aspect=GlobalTagsClass(tags=tags)))
+            tag_action = "removed"
+        else:
+            tag_action = "unchanged"
+
+        return {
+            "verdict": verdict,
+            "governance_status": status,
+            "tag": NEEDS_REVIEW_TAG_URN if (want_tag or has_tag) else None,
+            "tag_action": tag_action,
+        }

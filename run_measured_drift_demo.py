@@ -36,10 +36,12 @@ from datahub.ingestion.graph.client import DataHubGraph, DataHubGraphConfig
 from datahub.metadata.schema_classes import (
     DatasetFieldProfileClass,
     DatasetProfileClass,
+    GlobalTagsClass,
     HistogramClass,
     MLFeaturePropertiesClass,
     MLFeatureTablePropertiesClass,
     MLModelPropertiesClass,
+    StructuredPropertiesClass,
 )
 
 from confidence_model import Belief
@@ -86,6 +88,7 @@ def run_scenario(label, tag, old_field, new_field, old_stat, new_stat, expect_si
     g.emit(MCP(entityUrn=ft, aspect=MLFeatureTablePropertiesClass(description="demo features", mlFeatures=[feat])))
     g.emit(MCP(entityUrn=model, aspect=MLModelPropertiesClass(description="demo model", mlFeatures=[feat])))
     time.sleep(2)
+    description_before = g.get_aspect(model, MLModelPropertiesClass).description
 
     baseline = Belief()
     baseline.update("lineage", corroborates=True, hops=2, quality=0.9, event_id="o1")
@@ -105,6 +108,20 @@ def run_scenario(label, tag, old_field, new_field, old_stat, new_stat, expect_si
         print(f"   measured: PSI/KS computed standalone (not wired in) KS={ks:.4f} — no profile pair matched")
     print(f"   confidence: {baseline.confidence:.3f} -> {belief2.confidence:.3f}"
           f"  (Δ={belief2.confidence - baseline.confidence:+.3f})  governance={agent.govern(belief2)}")
+
+    gov_result = agent.actuate_governance(model, belief2)
+    print(f"   governance actuation: wrote mnemo.governance_status={gov_result['governance_status']}"
+          f"  tag={gov_result['tag']} ({gov_result['tag_action']}) on {model}")
+    sp_after = g.get_aspect(model, StructuredPropertiesClass)
+    gov_status_live = None
+    for p in (sp_after.properties if sp_after else []):
+        if p.propertyUrn.endswith("mnemo.governance_status"):
+            gov_status_live = p.values[0] if p.values else None
+    tags_after = g.get_aspect(model, GlobalTagsClass)
+    tag_urns_live = [t.tag for t in tags_after.tags] if tags_after and tags_after.tags else []
+    description_after = g.get_aspect(model, MLModelPropertiesClass).description
+    print(f"   [read-back from GMS] mnemo.governance_status={gov_status_live!r}  globalTags={tag_urns_live}"
+          f"  description unchanged={description_before == description_after}")
 
     psi_val = drift_info["psi"] if drift_info else None
     is_significant = psi_val is not None and psi_val > drift.PSI_SIGNIFICANT
