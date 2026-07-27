@@ -18,3 +18,7 @@ __pycache__/
 
 # transient eval run logs (artifacts live in results.csv/eval_summary.json)
 eval/eval_*.log
+
+# transient demo/capture run logs (script regenerates; keep actions/verify_run_SUCCESS.log as evidence)
+demo_e2e_*.log
+spike/smoke_test*.log
