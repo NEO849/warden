@@ -2,6 +2,8 @@
 # NOTE: pin exact versions on day 1 after `datahub version` against the quickstart.
 acryl-datahub[datahub-rest,datahub-kafka]>=0.15.0
 acryl-datahub-actions>=0.1.0
-langgraph>=0.2.0
-anthropic>=0.40.0
 python-dotenv>=1.0.0
+# Reflection-insight text is synthesized via local Ollama (HTTP), no SDK dep.
+# langgraph/anthropic were listed but never used — the agent is a direct Python
+# pipeline (observe->detect->govern->reflect), not a LangGraph/Claude orchestration.
+# mcp>=1.0 is added in the MCP-server block.

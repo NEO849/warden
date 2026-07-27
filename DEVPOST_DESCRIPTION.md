@@ -47,8 +47,8 @@ Mnemo is a memory agent for DataHub that:
 ## How it's different from a chat/analytics agent
 
 The reference-style `analytics-agent` pattern (request/response chat, conversation history in a local DB,
-free-text description write-back) is **stateless per query** — it has no per-asset memory living on the
-graph and therefore nothing to diff a new event against. A same-name, same-description source swap is
+free-text description write-back) **remembers the conversation, not the asset** — its session history lives
+in a local DB, but it keeps no per-asset memory on the graph and therefore has nothing to diff a new event against. A same-name, same-description source swap is
 structurally invisible to it. Mnemo's memory persists on the entity, survives across runs, and is
 compared against every new piece of evidence — that's the mechanism the reference pattern cannot
 replicate without becoming a different kind of system.
@@ -89,15 +89,16 @@ replicate without becoming a different kind of system.
 
 Honesty about what's built vs. planned is itself a submission-quality signal, not a liability — the repo
 states plainly (in `ARCHITECTURE.md` and the README status table) exactly which pieces are live-verified
-and which are work-in-progress (event-driven wake is currently polling; the eval harness is spec'd but not
-built), rather than narrating aspirational behavior as shipped.
+and which are work-in-progress (event-driven wake is currently a polling fallback), rather than narrating
+aspirational behavior as shipped.
 
 ## What's next
 
-- Finish the eval harness (task accuracy WITH vs. WITHOUT Mnemo's memory context, spec'd in
-  `scratchpad/spec_eval.md`).
-- Get `EntityChangeEvent_v1` reaching the custom Action reliably (currently polling fallback).
-- Add the `examples/` folder with captured provenance-chain and reflection-card artifacts.
+- Harden the eval realism — a raw-facts memory arm so the WITH score reflects the model *reasoning* rather
+  than reading a near-explicit label (the current WITH=1.00 is a ceiling; see `examples/EVAL_NOTES.md`).
+- Feed a measured distribution-drift statistic (PSI/KS) as a Bayesian evidence term, so the confidence
+  *magnitude* is measured, not prior-driven.
+- Get `EntityChangeEvent_v1` reaching the custom Action reliably (currently a polling fallback).
 - Upstream a DataHub Skill / RFC proposing "agent memory + confidence via structured properties."
 
 ## Built with

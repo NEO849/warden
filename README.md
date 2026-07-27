@@ -43,16 +43,16 @@ This is demonstrated end-to-end in [`run_ml_drift_demo.py`](run_ml_drift_demo.py
 
 The reference `datahub-project/analytics-agent` pattern (request/response chat agent, conversation history
 in a local DB, free-text description write-back) has **no per-asset memory on the graph** and **nothing to
-compare against**. Every query is stateless — it can describe the graph *as it is right now*, but it has no
-prior belief to diff against, so a same-name/same-description source swap is invisible to it by
-construction. Mnemo's moat isn't "we also have memory" — it's memory that **persists on the entity itself**,
+compare against**. It remembers the *conversation* (session history in a local DB) but keeps no prior belief
+about the *asset* to diff against — so it can describe the graph *as it is right now*, yet a
+same-name/same-description source swap is invisible to it by construction. Mnemo's moat isn't "we also have memory" — it's memory that **persists on the entity itself**,
 survives across runs, and gets **compared against new evidence** every time the agent revisits.
 
 | Dimension | Reference-style chat agent | Mnemo |
 |---|---|---|
 | Memory | conversation history, local DB | per-asset, **on the DataHub graph** (structured properties) |
 | Write-back | free-text descriptions | typed properties: confidence, log-odds, mass, provenance, summary |
-| Belief update | none — stateless per query | Bayesian log-odds update, re-scores on each revisit |
+| Belief update | none — no per-asset belief | Bayesian log-odds update, re-scores on each revisit |
 | Drift detection | none (nothing to diff against) | remembered source-set vs. live lineage, unchanged-schema-safe |
 | Cross-asset synthesis | none | lineage-wide reflection (below), grounded in its own memories |
 | Governance | none | confidence-gated: low-confidence → DataHub Proposal, not auto-write |
@@ -138,9 +138,9 @@ Stated plainly, because a rigor judge should be able to trust this table without
 | Lineage-wide reflection: traversal, confidence pooling, guards, write-back | `mnemo/reflection.py`, `run_reflection_demo.py` | ✅ **REAL**, live-verified |
 | Reflection insight *text* synthesis | `mnemo/llm.py` | ✅ **REAL** via local Ollama (falls back to a deterministic stub on any Ollama error — pipeline never breaks) |
 | Event-driven "wakes on `EntityChangeEvent`" | — | 🚧 **HONEST-WIP**. The Actions-framework spike loads/connects/runs, but the custom action did not reliably receive `EntityChangeEvent_v1` in quick tests. **Current reality: polling** (`get_urns_by_filter`) detects changes; "wakes on event" is the target design, not the shipped behavior. |
-| Eval harness (task accuracy WITH vs. WITHOUT Mnemo context) | `scratchpad/spec_eval.md` | 🚧 **spec only, not built.** No lift numbers are claimed anywhere in this repo. |
-| `examples/` folder (provenance-chain + reflection-card artifacts) | — | 🚧 **planned, not yet added** to the repo. |
-| LangGraph ReAct orchestration | — | 🚧 design-stage; the demo scripts call the core modules directly. |
+| Eval harness (task accuracy WITH vs. WITHOUT Mnemo context) | `eval/run_eval.py`, `eval/results.csv` | ✅ **BUILT & run** — controlled ablation (N=15, local Ollama, temp 0): WITHOUT 0.53 / WITH 1.00 / PLACEBO 0.33 (macro-F1 0.50/1.00/0.17), **lift +0.467**. Placebo (0.33) < without (0.53) → the lift is relevant context, not more tokens. *WITH=1.00 is a near-ceiling (memory near-explicit); a raw-facts arm is being added — see `examples/EVAL_NOTES.md`.* |
+| `examples/` folder (provenance-chain + reflection-card artifacts) | `examples/` | ✅ **present** — `memory_record.json`, `drift_trace.txt`, `reflection.json`, `eval_summary.json`, `eval_lift.svg`, `EVAL_NOTES.md`. |
+| LangGraph ReAct orchestration | — | ⛔ **not used, by design** — removed from deps; the agent is a direct Python pipeline (observe→detect→govern→reflect), not a LangGraph/Claude orchestration. |
 
 Full build-status ledger with dates: [`ARCHITECTURE.md §10`](ARCHITECTURE.md#10-build-status-live-verified-2026-07-24-datahub-v15-on-vps).
 
@@ -190,10 +190,10 @@ same distinction made in [Status / limitations](#status--limitations) above.
 
 ### `examples/`
 
-An `examples/` folder with a captured provenance-chain artifact and a reflection-card artifact is **planned
-but not yet in this repo** (see the status table above) — until it lands, the two `run_*_demo.py` scripts
-above are the canonical, reproducible way to see Mnemo's output, and their stdout is representative of what
-would populate `examples/`.
+An `examples/` folder with captured provenance-chain and reflection-card artifacts is **present**
+(`memory_record.json`, `reflection.json`, `drift_trace.txt`, `eval_summary.json`, `eval_lift.svg`,
+`EVAL_NOTES.md`). The two `run_*_demo.py` scripts remain the canonical, reproducible way to regenerate
+them live against a running DataHub instance.
 
 ---
 

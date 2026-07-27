@@ -10,11 +10,12 @@
 
 > ⚠️ **BUILT vs PLANNED (read before any judge-facing claim).** This document is the DESIGN. What is
 > actually built + live-verified is the table in **§10** — trust that, not the prose below. As of
-> 2026-07-24: **BUILT & REAL** = compounding belief-on-graph, live source-delta drift detection,
-> reflection traversal/pooling/guards/write-back. **STUB/PLANNED (do NOT narrate as done)** = LangGraph +
-> Claude (no API key yet → insight/summary TEXT is a deterministic placeholder), **event-driven wake**
-> (spike was AMBER → we run on **polling**; "wakes on event" is aspirational), and the **eval harness**
-> (spec only). Sections §1/§2/§4/§7 describe the target design, not the current state.
+> 2026-07-27: **BUILT & REAL** = compounding belief-on-graph, live source-delta drift detection,
+> reflection traversal/pooling/guards/write-back, insight/summary TEXT via **local Ollama** (deterministic
+> stub only on Ollama error), and the **eval harness** (built & run — WITHOUT 0.53 / WITH 1.00 / PLACEBO 0.33,
+> lift +0.467; see §10). **NOT USED (by design)** = LangGraph + Claude — the agent is a direct Python pipeline
+> (observe→detect→govern→reflect), not a graph orchestration. **STILL WIP** = **event-driven wake** (spike was
+> AMBER → we run on **polling**; "wakes on event" is aspirational). Sections §1/§2/§4/§7 describe the target design, not the current state.
 
 ---
 
@@ -29,7 +30,7 @@ the only score is `quality_score:Int` on a *conversations* telemetry table, neve
 So the moat is **not** "we have memory" (table stakes). It is the precise combination the reference and the
 shipped classifier structurally cannot do:
 
-> **Per-asset memory that lives ON the graph, wakes on metadata EVENTS, and COMPOUNDS — each memory
+> **Per-asset memory that lives ON the graph, revisits on metadata changes, and COMPOUNDS — each memory
 > carries a principled Bayesian confidence + provenance chain, re-scores itself as evidence arrives,
 > and periodically REFLECTS across lineage to emit graph-level insights that live on no single asset —
 > all gated on GOVERNANCE signals, with an EVAL HARNESS proving the context lift.**
@@ -42,7 +43,7 @@ no data-engineer in the field will assemble.
 
 ## 1. Concept
 
-**Mnemo** is an **event-driven memory agent** for DataHub. It:
+**Mnemo** is a **memory agent** for DataHub (event-driven by design; a polling reconcile loop today). It:
 
 1. **Wakes on events** — Actions Framework on `EntityChangeEvent_v1` (schema/doc/lineage/tag/owner).
 2. **Reads the graph** — lineage, schema, ownership, usage via the MCP server + SDK.
