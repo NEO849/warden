@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mnemo — Trust Console</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">◆</span>
+      <span class="brand-name">Mnemo</span>
+      <span class="brand-sub">Trust Console</span>
+    </div>
+    <div id="heartbeat" class="heartbeat heartbeat--pending" aria-live="polite">
+      <span class="hb-dot"></span>
+      <span id="hb-text">connecting…</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel panel--timeseries">
+      <div class="panel-head">
+        <h2>Confidence timeseries</h2>
+        <select id="model-select" aria-label="Select watched model"></select>
+      </div>
+      <p class="panel-note">
+        Belief.provenance, read back live from <code>mnemo.provenance</code> on the graph —
+        not simulated. The line forks where a contradicting event (source re-point, drift) is folded in.
+      </p>
+      <div id="chart-mount" class="chart-mount">
+        <p class="empty">Loading…</p>
+      </div>
+      <dl id="model-meta" class="meta-grid"></dl>
+    </section>
+
+    <section class="panel panel--queue">
+      <div class="panel-head">
+        <h2>Governance queue</h2>
+        <span id="queue-count" class="badge badge--muted">0</span>
+      </div>
+      <p class="panel-note">
+        Models where <code>mnemo.governance_status = NEEDS_REVIEW</code> — Mnemo's confidence
+        fell below τ=0.70 after contradicting evidence and a human should look before it's trusted again.
+      </p>
+      <div id="queue-mount">
+        <p class="empty">Loading…</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>Read-only · sourced live from <code id="gms-url-note">DataHub GMS</code> · no mutation endpoints in this app</span>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

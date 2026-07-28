@@ -1,0 +1,4 @@
+# Mnemo Trust Console — additive to the project's requirements.txt (acryl-datahub already there).
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+requests>=2.31.0
