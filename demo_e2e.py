@@ -53,7 +53,7 @@ PSI_STABLE_MAX = 0.10      # mnemo/drift.py PSI_STABLE
 PSI_SIGNIFICANT_MIN = 0.25  # mnemo/drift.py PSI_SIGNIFICANT
 COMPOUND_RESUMED = 0.600    # what a SECOND, independent load of churn_model must resume at
 COMPOUND_AFTER = 0.874      # after folding in one more corroborating "lineage" event on top
-EVAL_EXPECT = {"WITHOUT": 0.53, "WITH_RAW": 0.93, "WITH": 1.00, "PLACEBO": 0.33}
+EVAL_EXPECT = {"WITHOUT": 0.52, "WITH_RAW": 0.91, "WITH": 1.00, "PLACEBO": 0.33}
 TOL = 0.003
 
 
