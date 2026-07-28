@@ -50,7 +50,7 @@ Mnemo is a memory agent for DataHub that:
    testable independent of any LLM.
 7. **Learns and calibrates its own confidence** (`calibration.py`): Mnemo's confidence is a logistic
    model whose weights are its priors — it learns them by MAP from outcomes (weight-of-evidence/LLR)
-   and proves its calibration with a reliability diagram and falling ECE. When a human resolves an open
+   and *demonstrate* a calibration improvement with a reliability diagram and falling ECE. When a human resolves an open
    review (`resolve_review`), that outcome becomes a labeled training example — with a structural
    leakage guard (the human's own decision can never be a model input) — and the *same* weights that
    were hand-set priors on day one become fit parameters, honestly demonstrated on a synthetic,
@@ -106,8 +106,9 @@ replicate without becoming a different kind of system.
 
 Honesty about what's built vs. planned is itself a submission-quality signal, not a liability — the repo
 states plainly (in `ARCHITECTURE.md` and the README status table) exactly which pieces are live-verified
-and which are work-in-progress (event-driven wake is currently a polling fallback), rather than narrating
-aspirational behavior as shipped.
+and where a result is demonstrated on synthetic vs. organic data (for example, the learned-calibration
+figure runs on a synthetic, clearly-labeled outcome stream — a mechanism demo, not a claim of having
+learned from production), rather than narrating aspirational behavior as shipped.
 
 ## What's next
 

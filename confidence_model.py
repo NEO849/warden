@@ -28,8 +28,7 @@ C_MIN, C_MAX = 0.02, 0.98         # Cromwell's rule — never absolute certainty
 DW_MAX = 4.0                      # per-update weight cap (anti-flapping)
 N_MIN = 3.0                       # evidence mass needed before a >0.85 auto-write is allowed
 T_HALF_DAYS = 30.0               # staleness half-life (clamp 7..180 by change frequency)
-TAU_PROPOSAL = 0.7                # below this after a contradiction → open a DataHub Proposal
-PER_SOURCE_WCAP = 2.0             # cap cumulative weight from any single source (anti-double-count)
+TAU_PROPOSAL = 0.7                # below this after a contradiction → route to a needs-review governance signal
 T = 1.0                           # temperature scaling (Block C, calibration.py::fit_temperature).
                                     # T=1.0 is the default -> confidence is BIT-IDENTICAL to the
                                     # pre-calibration model (sigma(log_odds)). T is a per-Belief

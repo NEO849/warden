@@ -61,7 +61,7 @@ def sigmoid(z):
 
 
 def freeze_features(provenance, sources=FEATURE_SOURCES):
-    """Aggregate a Belief.provenance list (confidence_model.py:69-72 entries) into the per-source
+    """Aggregate a Belief.provenance list (the per-update entries confidence_model.py appends) into the per-source
     feature vector x used by c = σ(aᵀx). Each provenance entry stores "delta" = the AUTHORITY-
     weighted increment w = sign·AUTHORITY[source]·ρ·quality (confidence_model.py Belief.update);
     this reconstructs the raw sign·ρ·quality term as delta / AUTHORITY[source] (exact unless

@@ -108,8 +108,10 @@ post-contradiction point sits lower than the hero demo's 0.600 (which has no dec
 
 ### Learned, calibrated confidence (`calibration.py`)
 
-**Mnemo's confidence is a logistic model whose weights are its priors — it learns them by MAP from
-outcomes (weight-of-evidence/LLR) and proves its calibration (reliability diagram, ECE ↓).**
+**Mnemo's confidence is a logistic model whose weights are its priors — it can learn them by MAP from
+outcomes (weight-of-evidence/LLR) and *demonstrate* calibration (reliability diagram, ECE ↓). Shown here on a
+synthetic, fixed-seed outcome stream — a mechanism demo (weight-recovery + ECE ↓), not a claim of learning
+from production data.**
 
 `Belief.update()` was already computing `log_odds = Σ_source AUTHORITY[source] · ρ · quality`, and
 `Belief.confidence` returns `σ(log_odds / T)` — aggregated per source, that *is* logistic regression
@@ -144,7 +146,7 @@ diagram, no dependencies — same pattern as `eval/make_chart.py`).
 `drift_stat` (line below it, measured PSI) are two *views of the same swap* — they both fire together on
 exactly the cases this project's demos construct. A hand-set prior has no way to know that; a fit learned
 from real outcomes automatically down-weights the double-count between them (today the only guard against
-double-counting is the heuristic `PER_SOURCE_WCAP`/`DW_MAX` clamp in `confidence_model.py`).
+double-counting is the heuristic `DW_MAX` per-update clamp in `confidence_model.py`).
 
 ### Lineage-wide reflection (crown feature)
 

@@ -139,3 +139,22 @@ Kafka `EntityChangeEvent_v1`, ~30s end-to-end from tag-write to logged result.
 - Category coverage beyond `TAG`/`TECHNICAL_SCHEMA`/`LIFECYCLE` (`DOCUMENTATION`,
   `GLOSSARY_TERM`, `OWNER`) is carried over from the original spike's assumption and
   documented as such — not independently re-verified against a live event in this pass.
+
+## Always-on service (2026-07-28)
+
+The verify log quoted above (`actions/verify_run_SUCCESS.log`, 2026-07-27 18:03) is the **original
+one-shot proof** of the wake mechanism. Since then the consumer runs as a **registered systemd
+service** — `deploy/mnemo-wake.service` (`systemctl status mnemo-wake` → `active (running)`,
+`enabled`), so "wakes on event" is not only verified but continuously live. Its current log is
+`actions/wake_service.log` / `actions/wake_service.err.log` (not `verify_run_SUCCESS.log`, which is a
+frozen snapshot — don't cite it as the live instance).
+
+Two honest notes about the service wrapper (not the mechanism, which was already proven):
+
+- The very first systemd start (2026-07-28 11:23) **crashed** (`exit 1`): as a bare-root-cwd service the
+  action's bare module name `mnemo_wake_action` wasn't importable, and the CLI's telemetry call stalled
+  startup in `SYN-SENT`. Fixed with `PYTHONPATH=actions:.` and `DATAHUB_TELEMETRY_ENABLED=false`; the
+  11:56 start came up clean (Kafka `ESTAB`, "pipeline now running").
+- The events it reacts to in the demo are **self-seeded** (the demo entities), i.e. this proves the
+  consumer fires end-to-end on a real Kafka `EntityChangeEvent_v1` — not that it is monitoring organic
+  production traffic.
