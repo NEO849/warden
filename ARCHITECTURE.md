@@ -12,8 +12,8 @@
 > actually built + live-verified is the table in **§10** — trust that, not the prose below. As of
 > 2026-07-27: **BUILT & REAL** = compounding belief-on-graph, live source-delta drift detection,
 > reflection traversal/pooling/guards/write-back, insight/summary TEXT via **local Ollama** (deterministic
-> stub only on Ollama error), and the **eval harness** (built & run — headline **WITHOUT 0.53 / WITH_RAW 0.93**
-> (reasoning from bare facts) / PLACEBO 0.33; WITH 1.00 is an acknowledged ceiling; lift +0.40 raw; see §10). **NOT USED (by design)** = LangGraph + Claude — the agent is a direct Python pipeline
+> stub only on Ollama error), and the **eval harness** (built & run, N=21 incl. adversarial — headline **WITHOUT 0.52 / WITH_RAW 0.91**
+> (reasoning from bare facts) / PLACEBO 0.33; WITH 1.00 is an acknowledged ceiling; lift +0.38 raw; see §10). **NOT USED (by design)** = LangGraph + Claude — the agent is a direct Python pipeline
 > (observe→detect→govern→reflect), not a graph orchestration. **event-driven wake** is now **LIVE-VERIFIED as an
 > opt-in path** — a DataHub Actions consumer woke the detection on a real Kafka `EntityChangeEvent_v1`
 > (TAG event, confidence 0.901→0.600, zero polling; root cause was a wrong `schema_registry_url`, see
@@ -208,7 +208,7 @@ POLLING FALLBACK GREEN ✅ (change detection via get_urns_by_filter works). **Ve
 | **ML-drift hero** (silent source re-point) | `run_ml_drift_demo.py` | ✅ GREEN — 0.901→0.600 → governance Proposal |
 | **Lineage-wide reflection** (crown) | `mnemo/reflection.py`, `run_reflection_demo.py` | ✅ GREEN — insight conf 0.912 citing 3 assets, on model |
 | **Unified agent** (one coherent object) | `mnemo/agent.py`, `run_agent.py` | ✅ GREEN — observe→remember→detect-drift→re-score→govern→reflect through one MnemoAgent (answers "demos are linear scripts") |
-| Eval harness (with/without lift) | `eval/run_eval.py`, `examples/EVAL_NOTES.md` | ✅ BUILT + RUN (N=15): WITHOUT 0.53 · WITH 1.00 · PLACEBO 0.33. Honest framing = **controlled ablation**; headline = placebo<without (lift is relevant memory, not tokens), NOT the 100% |
+| Eval harness (with/without lift) | `eval/run_eval.py`, `examples/EVAL_NOTES.md` | ✅ BUILT + RUN (N=21 incl. 6 adversarial): WITHOUT 0.52 · WITH_RAW 0.91 · WITH 1.00 · PLACEBO 0.33. Honest framing = **controlled ablation**; headline = WITH_RAW 0.91 (reasoning from bare facts) + placebo<without, NOT the 100% |
 | LLM synthesis (insights) | `mnemo/llm.py` | ✅ wired to **local Ollama** (free, no key); stub fallback |
 | Apache-2.0 LICENSE | `LICENSE` | ✅ added (Stage-1 requirement) |
 | README + Devpost writeup | `README.md`, `DEVPOST_DESCRIPTION.md` | ✅ drafted (honest status table) |

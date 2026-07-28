@@ -31,8 +31,11 @@ SYSTEM = ("You are an ML production-risk triage agent. Given metadata about a mo
           "NO_RISK (the change does not affect this model's inputs). "
           'Output STRICT JSON: {"label": "DRIFT"|"LEAKAGE"|"NO_RISK"}.')
 
-# 15 genuinely-distinct labeled cases (5/class), mixed difficulty incl. hard cases where memory is
-# weak/ambiguous so WITH is not trivially perfect. raw = facts shown to ALL arms; mem = Mnemo memory.
+# 21 genuinely-distinct labeled cases (7/class): the original 15 (5/class), mixed difficulty incl.
+# hard cases where memory is weak/ambiguous so WITH is not trivially perfect, PLUS 6 ADVERSARIAL
+# cases (2/class, appended at the end — see "ADVERSARIAL" block below) that each defeat the trivial
+# schema-pattern shortcut a Rigor-Judge flagged (DRIFT=prior_source≠current_source, LEAKAGE=
+# current_source==label, NO_RISK=hash==hash). raw = facts shown to ALL arms; mem = Mnemo memory.
 # The memory gives REMEMBERED STATE, never the label — the model must still reason.
 #
 # mem_raw = the same remembered state, but stripped to RAW FACTS ONLY (prior_source/prior_type/
@@ -89,6 +92,28 @@ _BASE = [
     {"label": "NO_RISK", "raw": "Model demand_model: a new column added to an upstream table; existing consumed columns untouched.",
      "mem": "Memory: added column is not consumed by demand_model; existing inputs stable (confidence 0.88).",
      "mem_raw": "prior_source=demand_model_inputs; prior_type=input_set_hash:7e2d; prior_confidence=0.88; current_source=input_set_hash:7e2d"},
+    # ---- ADVERSARIAL (6, 2/class) — each one defeats the trivial schema-pattern shortcut.
+    # NO_RISK despite prior_source != current_source (would trivially read as DRIFT):
+    {"label": "NO_RISK", "raw": "Model pricing_model uses feature base_currency_amount; lineage source table renamed from txn_amounts_usd to txn_amounts_usd_v2 during a routine warehouse migration; column-level checksum of migrated rows matches the source-of-truth ledger for the full historical window.",
+     "mem": "Memory: txn_amounts_usd was migrated verbatim to txn_amounts_usd_v2 as part of a scheduled warehouse copy; row-level checksums matched pre/post migration (confidence 0.93); no transformation logic applied — a physical rename, not a semantic change.",
+     "mem_raw": "prior_source=txn_amounts_usd; prior_type=table_ref; prior_confidence=0.93; current_source=txn_amounts_usd_v2"},
+    {"label": "NO_RISK", "raw": "Model inventory_forecast_model uses feature warehouse_temp_reading; the upstream source was swapped from sensor_feed_a to sensor_feed_b after a hardware vendor change; sensor_feed_b was calibrated against sensor_feed_a for 30 days with mean absolute deviation under 0.1 degrees before cutover, per the attached migration ticket.",
+     "mem": "Memory: warehouse_temp_reading originally sourced from sensor_feed_a (confidence 0.85); now sensor_feed_b following a calibrated, validated vendor swap — values are equivalent within noise, not a semantic change.",
+     "mem_raw": "prior_source=sensor_feed_a; prior_type=sensor_stream; prior_confidence=0.85; current_source=sensor_feed_b"},
+    # LEAKAGE where current_source is NOT literally the label — needs a 1-2 hop inference from `raw`:
+    {"label": "LEAKAGE", "raw": "Model subscription_churn_model uses feature days_since_last_ticket_days; lineage sources=[support_tickets_enriched]; support_tickets_enriched is built by joining raw ticket data to cancellation_survey on user_id; cancellation_survey rows exist only for users who already cancelled; training label is cancelled_flag.",
+     "mem": "Memory: days_since_last_ticket_days is sourced from support_tickets_enriched; that dataset's build joins in cancellation_survey (post-cancellation-only rows) — the feature's lineage is not label-clean (confidence 0.79).",
+     "mem_raw": "prior_source=raw_tickets; prior_type=lineage_hop; prior_confidence=0.79; current_source=support_tickets_enriched"},
+    {"label": "LEAKAGE", "raw": "Model insurance_claim_model uses feature policy_review_flag; policy_review_flag.sources=[underwriting_queue]; underwriting_queue records are created automatically whenever a claim is later marked fraudulent; training label is is_fraud.",
+     "mem": "Memory: policy_review_flag comes from underwriting_queue, whose rows are triggered by the fraud-determination process itself (confidence 0.76) — the feature is a downstream artifact of the label.",
+     "mem_raw": "prior_source=intake_queue; prior_type=lineage_hop; prior_confidence=0.76; current_source=underwriting_queue"},
+    # DRIFT where prior_source == current_source at the named field — only a semantic/deeper change:
+    {"label": "DRIFT", "raw": "Model logistics_eta_model uses feature avg_transit_hours; lineage source unchanged at warehouse_transit_events; however the upstream team changed the timezone convention of the timestamp columns feeding this aggregate from UTC to store-local time without updating any column name or type.",
+     "mem": "Memory: avg_transit_hours sourced from warehouse_transit_events at confidence 0.86; underlying timestamp semantics shifted from UTC to local-time under the same column name — a silent meaning change.",
+     "mem_raw": "prior_source=warehouse_transit_events; prior_type=table_ref; prior_confidence=0.86; current_source=warehouse_transit_events; timestamp_convention_prior=UTC; timestamp_convention_current=store_local"},
+    {"label": "DRIFT", "raw": "Model pricing_elasticity_model uses feature price_change_pct; lineage source unchanged at pricing_events; upstream engineering changed the aggregation window for price_change_pct from a 7-day rolling window to a 30-day rolling window as part of a metric redefinition, keeping the exact same column name and table.",
+     "mem": "Memory: price_change_pct sourced from pricing_events at confidence 0.84; no source or table change recorded — but the aggregation window definition changed upstream (7-day to 30-day), altering what the feature measures under an unchanged name.",
+     "mem_raw": "prior_source=pricing_events; prior_type=table_ref; prior_confidence=0.84; current_source=pricing_events"},
 ]
 PLACEBO = ("Memory on unrelated asset marketing_dashboard: refreshed nightly, owned by growth team, "
            "tier GOLD, confidence 0.88. No relation to this model.")
