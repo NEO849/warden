@@ -41,6 +41,7 @@ from typing import Any, List, Optional
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 from datahub.ingestion.graph.client import DataHubGraph, DataHubGraphConfig
+from datahub.ingestion.graph.openapi import RelationshipDirection
 from datahub_actions.action.action import Action
 from datahub_actions.event.event_envelope import EventEnvelope
 from datahub_actions.event.event_registry import ENTITY_CHANGE_EVENT_V1_TYPE
@@ -57,6 +58,53 @@ logging.basicConfig(level=logging.INFO)
 # are the documented sibling categories of the same generator hook family — included
 # on the same basis as the original spike's WAKE_ON set, not independently re-verified.
 WAKE_ON = {"TECHNICAL_SCHEMA", "DOCUMENTATION", "GLOSSARY_TERM", "TAG", "OWNER", "LIFECYCLE"}
+
+# --- G2: reverse-lineage auto-watch --------------------------------------------------------
+# Relationship names EMPIRICALLY CONFIRMED against a live GMS via
+# GET /openapi/relationships/v1/?urn=...&direction=...&relationshipTypes=... (not assumed from
+# the PDL source, which isn't shipped in the installed package):
+#   Dataset  <--DerivedFrom-- MLFeature      (MLFeatureProperties.sources points AT the dataset)
+#   MLFeature <--Consumes--   MLModel        (MLModelProperties.mlFeatures points AT the feature)
+# i.e. querying INCOMING relationships FROM the dataset/feature URN walks the edge backwards —
+# exactly the "which model depends on this" direction mnemo/reader.py's forward walk doesn't give.
+_DATASET_TO_FEATURE_REL = "DerivedFrom"
+_FEATURE_TO_MODEL_REL = "Consumes"
+_MAX_REVERSE_LINEAGE_MODELS = 25
+
+
+def _reverse_lineage_models(graph: DataHubGraph, dataset_urn: str,
+                            max_models: int = _MAX_REVERSE_LINEAGE_MODELS) -> List[str]:
+    """Dataset -> (reverse) MLFeature -> (reverse) MLModel: which model(s) autonomously found to
+    depend on `dataset_urn` via a feature, using GMS's live relationships API — the autonomy move,
+    letting the wake find its own targets instead of relying purely on the static watch_models
+    config. De-duplicated, capped at `max_models`. Best-effort and NEVER raises: any failure
+    (relationship API hiccup, SDK surface change, empty result) returns [] and the caller (act(),
+    below) falls back to the static watch_models list — this is purely additive, never a hard
+    dependency for the wake to keep functioning."""
+    try:
+        feature_urns = [
+            r.urn for r in graph.get_related_entities(
+                dataset_urn, relationship_types=[_DATASET_TO_FEATURE_REL],
+                direction=RelationshipDirection.INCOMING,
+            )
+            if r.urn.startswith("urn:li:mlFeature:")
+        ]
+        models: List[str] = []
+        seen = set()
+        for feat_urn in feature_urns:
+            for r in graph.get_related_entities(
+                feat_urn, relationship_types=[_FEATURE_TO_MODEL_REL],
+                direction=RelationshipDirection.INCOMING,
+            ):
+                if r.urn.startswith("urn:li:mlModel:") and r.urn not in seen:
+                    seen.add(r.urn)
+                    models.append(r.urn)
+                    if len(models) >= max_models:
+                        return models
+        return models
+    except Exception:
+        logger.exception("MNEMO WAKE: reverse-lineage resolution failed for dataset %s", dataset_urn)
+        return []
 
 
 def _parse_watch_models(raw: Any) -> List[str]:
@@ -113,36 +161,86 @@ class MnemoWakeAction(Action):
         if category not in WAKE_ON:
             return
 
+        entity_type = getattr(e, "entityType", None)
+        entity_urn = getattr(e, "entityUrn", None)
+
+        # G2: if the event landed on a DATASET, try to autonomously resolve which mlModel(s)
+        # depend on it (reverse lineage) instead of only re-checking the static watch_models
+        # config. Static list is the guaranteed fallback whenever the dynamic resolution comes
+        # back empty (no dependents, API hiccup, or a non-dataset event) — see _reverse_lineage_
+        # models's docstring.
+        resolved_dynamically = False
+        if entity_type == "dataset" and entity_urn:
+            dynamic_models = _reverse_lineage_models(self.agent.g, entity_urn)
+            if dynamic_models:
+                target_models, resolved_dynamically = dynamic_models, True
+            else:
+                target_models = self.watch_models
+        else:
+            target_models = self.watch_models
+
+        resolution_source = "reverse-lineage" if resolved_dynamically else "static-watchlist"
+        # NOTE: logger.info here is routinely swallowed by the `datahub actions` CLI's own
+        # logging config (verified empirically: even the original code's per-event INFO line
+        # never once appears in wake_service.err.log across thousands of lines — only WARNING+
+        # from this logger ever surfaces). So the resolution source is ALSO folded into the
+        # WARNING result line below (via=...), which is always visible, rather than relying on
+        # this line alone.
         logger.info(
-            "MNEMO WAKE ▶ event=%s/%s entityType=%s urn=%s (watching %d model(s))",
-            category, getattr(e, "operation", None), getattr(e, "entityType", None),
-            getattr(e, "entityUrn", None), len(self.watch_models),
+            "MNEMO WAKE ▶ event=%s/%s entityType=%s urn=%s (watching %d model(s), resolved via %s)",
+            category, getattr(e, "operation", None), entity_type, entity_urn,
+            len(target_models), resolution_source,
         )
 
-        for model_urn in self.watch_models:
+        for model_urn in target_models:
             try:
                 changed, remembered, now, belief, drift_info = self.agent.check_model_inputs(model_urn)
             except Exception:
                 logger.exception("MNEMO WAKE: check_model_inputs failed for %s", model_urn)
                 continue
 
-            governance = self.agent.govern(belief)
             drift_note = (
                 f" drift_psi={drift_info['psi']:.3f} field={drift_info['field']}"
                 if drift_info else ""
             )
-            if changed:
-                logger.warning(
-                    "MNEMO WAKE RESULT ⚠ model=%s changed=%s remembered=%s now=%s "
-                    "confidence=%.3f governance=%s%s (triggered by %s on %s)",
-                    model_urn, changed, remembered, now, belief.confidence, governance,
-                    drift_note, category, getattr(e, "entityUrn", None),
-                )
-            else:
+
+            if not changed:
                 logger.info(
                     "MNEMO WAKE RESULT model=%s changed=%s confidence=%.3f governance=%s",
-                    model_urn, changed, belief.confidence, governance,
+                    model_urn, changed, belief.confidence, self.agent.govern(belief),
                 )
+                continue
+
+            # G1 (load-bearing fix): ACTUATE the governance verdict — was log-only before. This
+            # is what makes the write real: mnemo.governance_status + the mnemo-needs-review tag
+            # + the mnemo.finding context-document all land on the graph (see
+            # mnemo/agent.py::actuate_governance), which is what console/app.py and
+            # interop_demo.py actually read.
+            ctx: dict = {}
+            if drift_info is not None:
+                # _measured_drift already pins down the exact swapped pair + measured PSI.
+                ctx = {"old_source": drift_info.get("old_source"),
+                       "new_source": drift_info.get("new_source"),
+                       "psi": drift_info.get("psi")}
+            else:
+                removed = set(remembered) - set(now)
+                added = set(now) - set(remembered)
+                if len(removed) == 1 and len(added) == 1:
+                    ctx = {"old_source": next(iter(removed)), "new_source": next(iter(added))}
+
+            try:
+                result = self.agent.actuate_governance(model_urn, belief, context=ctx)
+            except Exception:
+                logger.exception("MNEMO WAKE: actuate_governance failed for %s", model_urn)
+                continue
+
+            logger.warning(
+                "MNEMO WAKE RESULT ⚠ model=%s changed=%s remembered=%s now=%s confidence=%.3f "
+                "governance=%s tag=%s(%s) finding=%r%s (triggered by %s on %s, via=%s)",
+                model_urn, changed, remembered, now, belief.confidence,
+                result["governance_status"], result["tag"], result["tag_action"], result["finding"],
+                drift_note, category, entity_urn, resolution_source,
+            )
 
     def close(self) -> None:
         pass
