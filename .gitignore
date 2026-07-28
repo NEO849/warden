@@ -24,3 +24,5 @@ demo_e2e_*.log
 spike/smoke_test*.log
 
 eval/_run_logs/
+
+actions/wake_service*.log

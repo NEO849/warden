@@ -1,0 +1,29 @@
+[Unit]
+Description=Mnemo — always-on event-driven wake consumer (DataHub Actions on EntityChangeEvent_v1)
+Documentation=file:///root/hackathons/datahub-agent/EVENT_WAKE_STATUS.md
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/hackathons/datahub-agent
+# GMS + its embedded schema registry stay on localhost — never exposed publicly.
+Environment=DATAHUB_GMS_URL=http://localhost:8090
+# CLI telemetry phones home to an AWS analytics endpoint; when egress is blocked it stalls
+# startup in SYN-SENT. Disable it so the consumer reaches the Kafka poll loop immediately.
+Environment=DATAHUB_TELEMETRY_ENABLED=false
+# The action is referenced by bare module name (mnemo_wake_action:MnemoWakeAction), so actions/
+# must be importable; the action itself imports mnemo.agent, so the project root must be too.
+Environment=PYTHONPATH=/root/hackathons/datahub-agent/actions:/root/hackathons/datahub-agent
+Environment=MNEMO_WATCH_MODELS=urn:li:mlModel:(urn:li:dataPlatform:mlflow,churn_model,PROD)
+ExecStart=/root/hackathons/datahub-agent/.venv/bin/datahub actions -c actions/mnemo_wake_config.yaml
+Restart=always
+RestartSec=10
+# Resource-polite (runs beside the DataHub stack + Ollama)
+Nice=10
+StandardOutput=append:/root/hackathons/datahub-agent/actions/wake_service.log
+StandardError=append:/root/hackathons/datahub-agent/actions/wake_service.err.log
+
+[Install]
+WantedBy=multi-user.target
