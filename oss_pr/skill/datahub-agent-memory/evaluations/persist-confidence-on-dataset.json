@@ -1,0 +1,11 @@
+{
+  "skills": ["datahub-agent-memory"],
+  "query": "Give this dataset a durable confidence score my agent can update every time it re-checks it",
+  "expected_behavior": [
+    "Recognizes this needs resumable, per-asset state, not a one-off metadata update",
+    "Runs the one-time 'define' setup so the agent.* structured properties and needs-review tag exist",
+    "Uses 'write' with an explicit evidence source, hops, and quality rather than inventing a raw confidence number",
+    "Explains that the belief resumes from whatever agent.logodds/agent.mass already sit on the asset, instead of resetting to a neutral prior",
+    "Reads the written properties back to verify the write actually landed before reporting success"
+  ]
+}

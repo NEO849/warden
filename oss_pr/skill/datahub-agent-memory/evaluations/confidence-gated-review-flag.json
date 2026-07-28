@@ -1,0 +1,11 @@
+{
+  "skills": ["datahub-agent-memory"],
+  "query": "This model's inputs just changed silently — flag it for review if my agent isn't confident anymore, but don't touch its description",
+  "expected_behavior": [
+    "Records the input change as contradicting evidence via 'write --contradicts' rather than directly setting a status field",
+    "Runs 'govern' to compute the verdict from the belief (open-proposal / needs-review / auto-write) rather than hardcoding a threshold check",
+    "Explains that a genuine contradiction (open-proposal) sets agent.status=NEEDS_REVIEW and adds the agent-needs-review tag, while the mid-band (needs-review) sets status but leaves the tag alone",
+    "States explicitly that governance actuation never writes the model's own description or other owner-authored metadata, only its own agent.* properties and tag",
+    "Reads back the agent.status and tag state to confirm the flag was actually applied"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "skills": ["datahub-agent-memory"],
+  "query": "My agent re-runs daily on the same 500 assets and re-derives the same conclusions every time — how do I make it remember what it already learned?",
+  "expected_behavior": [
+    "Identifies this as the durable-per-asset-memory gap this skill fills, not a search or one-off enrichment task",
+    "Explains that agent_memory.py's load_belief() resumes log_odds/mass/provenance from the agent.* structured properties already on each asset, so each run continues the prior posterior",
+    "Notes that structuredProperties is a full-replace aspect, so persistence must read the current property set before writing any subset of it, or it silently erases sibling fields",
+    "Mentions staleness decay (Belief.decay) as the mechanism for assets that go unobserved for a while, pulling belief back toward the neutral prior rather than keeping stale certainty forever",
+    "Points to running scripts/belief.py standalone to see the accumulation mechanism without needing a live DataHub instance"
+  ]
+}
