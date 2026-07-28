@@ -95,6 +95,12 @@ replicate without becoming a different kind of system.
 
 ## Accomplishments that we're proud of
 
+- An **end-to-end organic live chain** that runs like clockwork on DataHub's own sample graph: a real
+  Kafka event → the agent resolves *by reverse lineage* which model the changed dataset feeds → wakes →
+  writes a governed review flag → a separate agent (reading only the graph) refuses the model.
+  `run_live_chain_demo.py`, 17/17 poll-until gates, idempotent — no fixed sleeps, every stage self-verifying.
+- **Autonomy, not a hardcoded watch-list**: `Dataset ←DerivedFrom— MLFeature ←Consumes— MLModel` reverse
+  lineage means the agent discovers *which* models a changed dataset affects, with the static list as a fallback.
 - A confidence model that is actually principled (log-odds Bayesian update, discounted by lineage
   distance, Cromwell's-rule-bounded) rather than a hand-waved 0–1 score.
 - Live-verified drift detection: a source-set delta invisible to schema-diffing, caught by comparing

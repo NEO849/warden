@@ -133,9 +133,14 @@ Kafka `EntityChangeEvent_v1`, ~30s end-to-end from tag-write to logged result.
   (buggy-config) run; harmless for a demo-scale run but would need
   `max.poll.interval.ms` tuning for a long-lived production deployment doing heavier
   per-event work.
-- `watch_models` is a static list in the pipeline config, not a live query — a real
-  deployment would resolve "which models depend on this changed dataset" via a reverse
-  lineage lookup rather than a hardcoded watch-list. Out of scope for the time-box.
+- `watch_models` is now resolved **dynamically via reverse lineage** on a dataset-change event:
+  `_reverse_lineage_models()` walks `Dataset ←DerivedFrom— MLFeature ←Consumes— MLModel` (2-hop,
+  capped at 25) so the agent **autonomously discovers** which models a changed dataset feeds, instead
+  of a hardcoded list. The static `watch_models` list remains a **fallback** (empty result / exception /
+  non-dataset event falls through to it). Live-verified: a model *not* in the static list was woken
+  `via=reverse-lineage`, and the fallback path was exercised too. The full organic chain (real Kafka
+  event → reverse-lineage resolve → wake → governance write → console → interop refusal) runs green
+  end-to-end in `run_live_chain_demo.py` on DataHub's own sample graph.
 - Category coverage beyond `TAG`/`TECHNICAL_SCHEMA`/`LIFECYCLE` (`DOCUMENTATION`,
   `GLOSSARY_TERM`, `OWNER`) is carried over from the original spike's assumption and
   documented as such — not independently re-verified against a live event in this pass.
