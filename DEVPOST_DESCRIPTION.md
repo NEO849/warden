@@ -48,6 +48,13 @@ Mnemo is a memory agent for DataHub that:
 6. **Synthesizes insight text with a local LLM** (Ollama, no API key/card needed), falling back to a
    deterministic stub on any LLM error so the traversal/pooling/guard/write-back pipeline is fully
    testable independent of any LLM.
+7. **Learns and calibrates its own confidence** (`calibration.py`): Mnemo's confidence is a logistic
+   model whose weights are its priors — it learns them by MAP from outcomes (weight-of-evidence/LLR)
+   and proves its calibration with a reliability diagram and falling ECE. When a human resolves an open
+   review (`resolve_review`), that outcome becomes a labeled training example — with a structural
+   leakage guard (the human's own decision can never be a model input) — and the *same* weights that
+   were hand-set priors on day one become fit parameters, honestly demonstrated on a synthetic,
+   fixed-seed outcome stream rather than claimed as learned from production data.
 
 ## How it's different from a chat/analytics agent
 
@@ -66,6 +73,9 @@ replicate without becoming a different kind of system.
 - `mnemo/reflection.py` — lineage traversal (up to 6 hops), proximity-weighted confidence pooling,
   four guard conditions, write-back onto the `MLModel` entity.
 - `mnemo/llm.py` — local Ollama hook for reflection-insight text, with stub fallback.
+- `calibration.py` — MAP logistic-regression weight-fit + temperature scaling + ECE/Brier over the same
+  `AUTHORITY` weights `confidence_model.py` already used as priors; `mnemo/agent.py::resolve_review` closes
+  the outcome loop that feeds it.
 - `run_ml_drift_demo.py` / `run_reflection_demo.py` — end-to-end, live-against-DataHub demo scripts
   that print an explicit `[honesty]` line distinguishing verified mechanism from placeholder text.
 - Stack: Python 3.11, `acryl-datahub` SDK, DataHub local Docker quickstart, local Ollama.

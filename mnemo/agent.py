@@ -9,7 +9,9 @@ MnemoAgent — the coherent agent that unifies the pieces the demo scripts exerc
 One object, one belief model, one governance policy — so the project reads as an agent, not scripts.
 Read layer via DataHubReader; memory persisted on the graph via MnemoMemory; confidence via Belief.
 """
+import datetime as _dt
 import json
+import re
 
 from datahub.emitter.mcp import MetadataChangeProposalWrapper as MCP
 from datahub.metadata.schema_classes import (
@@ -21,6 +23,7 @@ from datahub.metadata.schema_classes import (
     TagPropertiesClass,
 )
 
+from calibration import FEATURE_SOURCES, freeze_features
 from confidence_model import Belief
 from mnemo import drift
 from mnemo.memory import MnemoMemory
@@ -32,6 +35,14 @@ from mnemo.reflection import reflect, define_reflection_property
 # Mnemo's own structured property is the honest OSS equivalent: a visible, queryable review flag
 # on the graph instead of a print statement nobody can see or act on.
 NEEDS_REVIEW_TAG_URN = "urn:li:tag:mnemo-needs-review"
+
+
+def _short_urn(urn: str) -> str:
+    """Best-effort short label for a comma-delimited DataHub URN, e.g.
+    'urn:li:dataset:(urn:li:dataPlatform:hive,fct_users_created,PROD)' -> 'fct_users_created'.
+    Falls back to the raw urn if the pattern doesn't match (never raises)."""
+    m = re.search(r",([^,()]+),", urn)
+    return m.group(1) if m else urn
 
 
 class MnemoAgent:
@@ -174,41 +185,69 @@ class MnemoAgent:
         return "needs-review"
 
     # --- governance ACTUATION: turn the govern() verdict into a real, visible graph action ---
-    def actuate_governance(self, model_urn: str, belief: Belief) -> dict:
+    def actuate_governance(self, model_urn: str, belief: Belief, context: dict | None = None) -> dict:
         """Confidence-gated, OSS-native governance signal — replaces a mere print statement with a
         real write the DataHub UI shows immediately.
 
         There is no ActionRequest/Proposal entity in the OSS DataHub SDK — real Proposals are a
-        Cloud-only feature. The honest OSS-native "human gate" this method actually emits is two
-        things, both owned entirely by Mnemo:
+        Cloud-only feature. The honest OSS-native "human gate" this method actually emits is now
+        FOUR things, all owned entirely by Mnemo:
           (a) `mnemo.governance_status` structured property on the model  (NEEDS_REVIEW | TRUSTED)
           (b) the GlobalTag `mnemo-needs-review` on the model, present only while NEEDS_REVIEW is
               the result of a genuine contradiction (govern() == "open-proposal")
+          (c) [Block C] `mnemo.decision_features` — the calibration feature vector x, FROZEN
+              *right now* from belief.provenance, whenever a review opens (status==NEEDS_REVIEW).
+              This is deliberately the earliest possible freeze point ("flag time"), strictly
+              before any human resolution can exist — see resolve_review()'s LEAKAGE-GUARD, which
+              depends on that ordering.
+          (d) [Block D] `mnemo.finding` — a human-readable one-line context-document write-back,
+              also whenever a review opens: "Mnemo · <date>: source re-pointed X→Y; PSI=…;
+              confidence 0.90→0.60; NEEDS-REVIEW". `context` (optional) supplies the drift
+              specifics (old_source/new_source/psi — see check_model_inputs's drift_info) for the
+              richer message; without it the finding still reports the confidence transition and
+              verdict, both always available from belief itself.
 
         Verdict -> action (govern(belief) is the single source of truth for the verdict itself):
           open-proposal (confidence < 0.70, belief.needs_proposal()):
-              governance_status=NEEDS_REVIEW, tag ADDED if not already present.
+              governance_status=NEEDS_REVIEW, tag ADDED if not already present, (c)+(d) written.
           needs-review (mid-band, neither threshold hit):
               governance_status=NEEDS_REVIEW, tag left as-is — not contradicted enough to demand
-              review, just not confident enough to auto-write.
+              review, just not confident enough to auto-write. (c)+(d) written (same NEEDS_REVIEW
+              status as open-proposal — a human review is equally warranted either way).
           auto-write (belief.actionable_high):
-              governance_status=TRUSTED, tag REMOVED if present.
+              governance_status=TRUSTED, tag REMOVED if present. (c)/(d) NOT written — nothing to
+              flag, so nothing to freeze a decision on.
 
         HARD INVARIANT — this method NEVER writes MLModelPropertiesClass.description, or any other
         editable/owner-authored metadata on the model. It only ever writes Mnemo's OWN mnemo.*
-        structured property and its OWN tag. That is the literal mechanism behind "never silently
+        structured properties and its OWN tag. That is the literal mechanism behind "never silently
         trusts/rewrites the model's metadata": read MLModelPropertiesClass.description before and
         after any call to this method and it must come back byte-identical.
 
         Returns what was actually emitted (for demo/readback), e.g.:
           {"verdict": "open-proposal", "governance_status": "NEEDS_REVIEW",
-           "tag": "urn:li:tag:mnemo-needs-review", "tag_action": "added"}
+           "tag": "urn:li:tag:mnemo-needs-review", "tag_action": "added",
+           "finding": "Mnemo · 2026-07-28: confidence 0.90→0.60; NEEDS-REVIEW"}
         """
         verdict = self.govern(belief)
         status = "TRUSTED" if verdict == "auto-write" else "NEEDS_REVIEW"
         want_tag = verdict == "open-proposal"
 
-        self.memory.set_governance_status(model_urn, status)
+        decision_features = None
+        finding = None
+        if status == "NEEDS_REVIEW":
+            # Block C: freeze x AT FLAG TIME (this call, right now) — before this call returns,
+            # nothing has touched belief with a human update, so freeze_features() (which itself
+            # unconditionally drops any 'human' source) cannot possibly see one. That ordering IS
+            # the leakage guard; resolve_review() later only ever READS this frozen snapshot back.
+            x = freeze_features(belief.provenance)
+            decision_features = (FEATURE_SOURCES, x)
+            # Block D: confidence-gated context-document write-back.
+            finding = self._format_finding(belief, context)
+
+        # ONE combined read-modify-write for governance_status + decision_features + finding — see
+        # MnemoMemory.actuate_write's docstring for why this must not be three separate round trips.
+        self.memory.actuate_write(model_urn, status, decision_features=decision_features, finding=finding)
 
         current = self.g.get_aspect(model_urn, GlobalTagsClass)
         tags = list(current.tags) if current and current.tags else []
@@ -231,4 +270,62 @@ class MnemoAgent:
             "governance_status": status,
             "tag": NEEDS_REVIEW_TAG_URN if (want_tag or has_tag) else None,
             "tag_action": tag_action,
+            "finding": finding,
+        }
+
+    def _format_finding(self, belief: Belief, context: dict | None) -> str:
+        """Block D: human-readable one-liner for the mnemo.finding context-document write-back —
+        'Mnemo · <date>: source re-pointed X→Y; PSI=…; confidence 0.90→0.60; NEEDS-REVIEW'.
+        `context` (optional) supplies the drift specifics {"old_source", "new_source", "psi"} when
+        the caller has them (see check_model_inputs's drift_info); without it, the message still
+        reports the confidence transition (always available from belief.provenance) and verdict."""
+        ctx = context or {}
+        parts = [f"Mnemo · {_dt.date.today().isoformat()}:"]
+        old_s, new_s = ctx.get("old_source"), ctx.get("new_source")
+        if old_s and new_s:
+            parts.append(f"source re-pointed {_short_urn(old_s)}→{_short_urn(new_s)};")
+        if ctx.get("psi") is not None:
+            parts.append(f"PSI={ctx['psi']:.3f};")
+        prov = belief.provenance
+        if len(prov) >= 2:
+            parts.append(f"confidence {prov[-2]['c_after']:.2f}→{prov[-1]['c_after']:.2f};")
+        else:
+            parts.append(f"confidence →{belief.confidence:.2f};")
+        parts.append("NEEDS-REVIEW")
+        return " ".join(parts)
+
+    # --- outcome loop (Block C): close the review a human just resolved -------------------------
+    def resolve_review(self, urn: str, confirmed: bool, event_id: str = "resolve_review") -> dict:
+        """A human resolves an OPEN review (one actuate_governance previously flagged NEEDS_REVIEW
+        on) as confirmed=True (the contradiction was real) or confirmed=False (false alarm).
+
+        Writes the outcome-loop LABEL y for calibration.py:
+          mnemo.outcome = 1.0 if confirmed else 0.0
+
+        paired with the FEATURE vector x = mnemo.decision_features that actuate_governance already
+        froze AT FLAG TIME — this method only ever READS that snapshot back, it never recomputes x
+        from the (by-now human-updated) belief. That is the LEAKAGE-GUARD, made structural rather
+        than a convention: x was captured before any human evidence existed, so it cannot contain
+        the label it is later fit against — see calibration.freeze_features()'s own defense-in-depth
+        drop of any 'human' source too.
+
+        Then folds the human decision into the belief itself as genuine 'human' evidence
+        (undiscounted, d=0 — confidence_model.py's rho=1.0 rule for source=='human'), so the NEXT
+        observe()/check_model_inputs() resumes from the human-corrected posterior instead of the
+        pre-review one — the review loop closes and the memory keeps compounding forward, exactly
+        like any other evidence update.
+        """
+        belief, summary_json = self.memory.load(urn)
+        decision_features = self.memory.read_decision_features(urn)  # frozen at flag time, above
+        belief.update("human", corroborates=confirmed, hops=0, quality=1.0, event_id=event_id)
+        payload = summary_json or json.dumps({"desc": "resolve_review"})
+        # ONE combined round trip for the belief save + the outcome label — same rationale as
+        # actuate_governance's actuate_write (see its docstring): no separate save() then
+        # set_outcome() pair that could race each other's not-yet-visible write on this entity.
+        self.memory.save(urn, payload, belief, event_id,
+                          extra={"mnemo.outcome": 1.0 if confirmed else 0.0})
+        return {
+            "outcome": 1.0 if confirmed else 0.0,
+            "decision_features": decision_features,
+            "confidence_after": belief.confidence,
         }

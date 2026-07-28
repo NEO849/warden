@@ -106,6 +106,46 @@ Run it standalone: `python confidence_model.py` reproduces the worked example (0
 contradiction → review → 0.96 on human confirmation). The standalone arc includes a decay step, so its
 post-contradiction point sits lower than the hero demo's 0.600 (which has no decay).
 
+### Learned, calibrated confidence (`calibration.py`)
+
+**Mnemo's confidence is a logistic model whose weights are its priors — it learns them by MAP from
+outcomes (weight-of-evidence/LLR) and proves its calibration (reliability diagram, ECE ↓).**
+
+`Belief.update()` was already computing `log_odds = Σ_source AUTHORITY[source] · ρ · quality`, and
+`Belief.confidence` returns `σ(log_odds / T)` — aggregated per source, that *is* logistic regression
+`c = σ(aᵀx)` with weight vector `a = AUTHORITY`. Nothing about that mechanism changed; `calibration.py`
+exposes what it already was and lets it learn:
+
+- **Outcome loop**: when governance opens a review (`mnemo/agent.py::actuate_governance`), the calibration
+  feature vector `x` (per-source aggregated `sign·ρ·quality`) is **frozen at that moment** from
+  `belief.provenance` and written as `mnemo.decision_features`. When a human later resolves the review
+  (`resolve_review(urn, confirmed)`), the label `y` is written as `mnemo.outcome` and folded into the
+  belief as genuine `human` evidence — the review closes and memory keeps compounding.
+- **LEAKAGE-GUARD** (structural, not a convention): `x` can never contain a `human` term — `human` is
+  excluded from `calibration.FEATURE_SOURCES` outright, *and* `x` is captured strictly before the human
+  update exists in provenance. The label `y` literally is the human decision; a feature that could see it
+  would trivially "predict" its own answer.
+- **`fit_map(X, y, a_prior, lam)`** — MAP logistic regression, L2-anchored to `a_prior`: with few outcomes
+  the fit shrinks back toward the hand-set priors (by design — that's what regularization is for on a
+  cold-started outcome log, not a limitation being hidden).
+- **`fit_temperature(logits, y)`** — fits the scalar `T` that `confidence_model.py`'s `Belief.T` already
+  supports (module default `T=1.0` ⇒ byte-identical to the pre-calibration model).
+- **`ece` / `brier`** — Expected Calibration Error and Brier score, plus the reliability-diagram bin data.
+
+Run it standalone: `python calibration.py` drives a **synthetic, fixed-seed** outcome stream (honestly
+labeled as such in its own output — this demonstrates the *mechanism*, it is not a claim of having learned
+from production data) against a planted ground-truth weight vector that deliberately differs from today's
+priors at two dimensions, and shows both **weight recovery** (`â` moves from `a_prior` toward `a_true`
+exactly where the prior was wrong, and stays put where it was already right) and a held-out **ECE/Brier
+improvement** (before `T=1, a_prior` vs. after `â, T*`). Writes `examples/calibration.svg` (reliability
+diagram, no dependencies — same pattern as `eval/make_chart.py`).
+
+**Honest correlation note**: `schema` (`mnemo/agent.py::check_model_inputs`, structural source-delta) and
+`drift_stat` (line below it, measured PSI) are two *views of the same swap* — they both fire together on
+exactly the cases this project's demos construct. A hand-set prior has no way to know that; a fit learned
+from real outcomes automatically down-weights the double-count between them (today the only guard against
+double-counting is the heuristic `PER_SOURCE_WCAP`/`DW_MAX` clamp in `confidence_model.py`).
+
 ### Lineage-wide reflection (crown feature)
 
 `mnemo/reflection.py` walks a model's lineage (`MLModel` → `MLFeature` → source datasets → their
@@ -143,6 +183,7 @@ Stated plainly, because a rigor judge should be able to trust this table without
 | Lineage-wide reflection: traversal, confidence pooling, guards, write-back | `mnemo/reflection.py`, `run_reflection_demo.py` | ✅ **REAL**, live-verified |
 | Core plumbing on **real, non-seeded** DataHub data | `run_realdata_demo.py` | ✅ **BUILT & live-verified** — Reader→Memory→Bayesian-confidence→read-back runs on DataHub's own bootstrap sample graph (`SampleHiveDataset`: real schema/owners/lineage), reaching confidence 0.951 and round-tripping `mnemo.*` on a non-author-seeded entity. Honest scope: the drift *scenario* + a real PSI still need constructed data (the sample pack ships no numeric histograms) — stated in the script's `[honesty]` line. |
 | Reflection insight *text* synthesis | `mnemo/llm.py` | ✅ **REAL** via local Ollama (falls back to a deterministic stub on any Ollama error — pipeline never breaks) |
+| Learned + calibrated confidence: outcome loop, MAP weight-fit, temperature scaling, ECE/Brier | `calibration.py`, `mnemo/agent.py::resolve_review`/`actuate_governance` | ✅ **REAL mechanism, live-verified outcome loop** — `resolve_review()`/`mnemo.decision_features`/`mnemo.outcome`/`mnemo.finding` round-trip on a live test entity (leakage guard confirmed structurally: `'human' not in FEATURE_SOURCES`). `calibration.py`'s weight-recovery + ECE/Brier improvement run on a **synthetic, fixed-seed** outcome stream — explicitly *not* a claim of having learned from production data (see the script's own `[HONESTY]` line). |
 | Event-driven "wakes on `EntityChangeEvent`" | `actions/mnemo_wake_action.py`, `actions/mnemo_wake_config.yaml`, `EVENT_WAKE_STATUS.md` | ✅ **LIVE-VERIFIED (opt-in)** — a DataHub Actions consumer wakes `check_model_inputs` on a real `EntityChangeEvent_v1` (Kafka, **zero polling**): a TAG event dropped confidence `0.901→0.600` → proposal, ~30s end-to-end (proof: `actions/verify_run_SUCCESS.log`). Empirically-confirmed categories: `TAG`/`TECHNICAL_SCHEMA`/`LIFECYCLE`; watch-list is static config. **Polling remains the shipped default** (`run_ml_drift_demo.py`); event-wake is additive/opt-in. |
 | Eval harness (task accuracy across memory arms) | `eval/run_eval.py`, `eval/results.csv` | ✅ **BUILT & run** — controlled ablation (**N=21**, incl. 6 adversarial cases built to defeat a trivial fact-pattern shortcut; local Ollama, temp 0): WITHOUT 0.52 / **WITH_RAW 0.91** / WITH 1.00 / PLACEBO 0.33 (macro-F1 0.49/0.91/1.00/0.17). **WITH_RAW** strips the memory to bare key=value facts (no conclusion words) → the model *reasons* to **0.91** (lift **+0.38**), even on the adversarial cases, missing two (incl. an adversarial DRIFT where `prior==current`) — the production-realistic number, not label-parroting. PLACEBO (0.33) < WITHOUT (0.52) → the lift is *relevant* memory, not more tokens. WITH=1.00 is an acknowledged ceiling. See `examples/EVAL_NOTES.md`. |
 | `examples/` folder (provenance-chain + reflection-card artifacts) | `examples/` | ✅ **present** — `memory_record.json`, `drift_trace.txt`, `reflection.json`, `eval_summary.json`, `eval_lift.svg`, `EVAL_NOTES.md`. |
@@ -188,6 +229,10 @@ python run_reflection_demo.py
 
 # 7. Run the confidence model standalone (no DataHub needed)
 python confidence_model.py
+
+# 8. Run the calibration demo standalone (no DataHub needed) — weight recovery + ECE/Brier,
+#    writes examples/calibration.svg
+python calibration.py
 ```
 
 Both `run_ml_drift_demo.py` and `run_reflection_demo.py` print an honest `[honesty]` line at the end of

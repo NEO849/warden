@@ -7,3 +7,5 @@ python-dotenv>=1.0.0
 # langgraph/anthropic were listed but never used — the agent is a direct Python
 # pipeline (observe->detect->govern->reflect), not a LangGraph/Claude orchestration.
 mcp>=1.0
+# calibration.py (Block C): MAP weight-fit + temperature scaling, pure numpy/stdlib, no new framework.
+numpy>=1.26

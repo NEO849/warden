@@ -30,6 +30,12 @@ N_MIN = 3.0                       # evidence mass needed before a >0.85 auto-wri
 T_HALF_DAYS = 30.0               # staleness half-life (clamp 7..180 by change frequency)
 TAU_PROPOSAL = 0.7                # below this after a contradiction → open a DataHub Proposal
 PER_SOURCE_WCAP = 2.0             # cap cumulative weight from any single source (anti-double-count)
+T = 1.0                           # temperature scaling (Block C, calibration.py::fit_temperature).
+                                    # T=1.0 is the default -> confidence is BIT-IDENTICAL to the
+                                    # pre-calibration model (sigma(log_odds)). T is a per-Belief
+                                    # attribute (see Belief.T below), not a mutated global, so it
+                                    # never has spooky-action-at-a-distance across beliefs sharing
+                                    # this module in one process.
 
 
 def _sigmoid(x: float) -> float:
@@ -41,10 +47,13 @@ class Belief:
     log_odds: float = 0.0         # ℓ, neutral prior = 0 → c = 0.5
     mass: float = 0.0             # N, effective evidence mass
     provenance: list = field(default_factory=list)
+    T: float = T                  # temperature scaling, module default 1.0 (Block C). Per-instance,
+                                    # not a global mutation, so calibration.py can fit/attach a T*
+                                    # to one Belief without perturbing any other in the same process.
 
     @property
     def confidence(self) -> float:
-        return max(C_MIN, min(C_MAX, _sigmoid(self.log_odds)))
+        return max(C_MIN, min(C_MAX, _sigmoid(self.log_odds / self.T)))
 
     @property
     def actionable_high(self) -> bool:
