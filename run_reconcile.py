@@ -19,15 +19,15 @@ from datahub.emitter.mce_builder import make_dataset_urn
 from datahub.ingestion.graph.client import DataHubGraph, DataHubGraphConfig
 
 from confidence_model import Belief
-from mnemo.memory import MnemoMemory
-from mnemo.reader import DataHubReader
+from warden.memory import WardenMemory
+from warden.reader import DataHubReader
 
 load_dotenv()
 g = DataHubGraph(DataHubGraphConfig(
     server=os.getenv("DATAHUB_GMS_URL", "http://localhost:8090"),
     token=os.getenv("DATAHUB_GMS_TOKEN") or None,
 ))
-reader, mem = DataHubReader(g), MnemoMemory(g)
+reader, mem = DataHubReader(g), WardenMemory(g)
 DS = make_dataset_urn("hive", "fct_users_created", "PROD")
 
 mem.define_properties()
@@ -39,7 +39,7 @@ print(f"[read] {len(ctx['fields'])} schema fields, {len(ctx['upstreams'])} upstr
       f"{len(ctx['owners'])} owners")
 b = Belief()
 b.update("lineage", corroborates=True, hops=2, quality=0.9, event_id="e1")
-summary = f"fct_users_created: {len(ctx['fields'])} fields; user-creation facts (mnemo draft)"
+summary = f"fct_users_created: {len(ctx['fields'])} fields; user-creation facts (warden draft)"
 mem.save(DS, summary, b, "e1")
 print(f"[RUN 1] formed initial memory → confidence {b.confidence:.3f}, saved to graph")
 

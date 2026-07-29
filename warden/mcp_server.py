@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
-mnemo/mcp_server.py — exposes Mnemo itself as an MCP tool (FastMCP, `mcp` Python SDK).
+warden/mcp_server.py — exposes Warden itself as an MCP tool (FastMCP, `mcp` Python SDK).
 
 Satisfies the hackathon's "must use DataHub-OSS + >=1 of {DataHub MCP Server, Agent Context
-Kit, DataHub Skills, Analytics Agent}" requirement via the DataHub-MCP-Server angle: Mnemo
+Kit, DataHub Skills, Analytics Agent}" requirement via the DataHub-MCP-Server angle: Warden
 becomes an MCP tool that any MCP client (Claude Desktop, an orchestrating agent, another MCP
 host) can call to get a drift verdict for an ML model — grounded in DataHub's live lineage
-graph plus Mnemo's own persisted belief memory (mnemo.* structured properties on the entity).
+graph plus Warden's own persisted belief memory (warden.* structured properties on the entity).
 
 One tool: assess_model_drift(model_urn) -> {verdict, confidence, evidence, memory_recall}
-Thin wrapper — no new logic here, just adapting MnemoAgent to the MCP tool-call contract.
-The SDK-backed default read/write path (mnemo/agent.py, mnemo/reader.py, mnemo/memory.py) is
+Thin wrapper — no new logic here, just adapting WardenAgent to the MCP tool-call contract.
+The SDK-backed default read/write path (warden/agent.py, warden/reader.py, warden/memory.py) is
 completely unchanged by this file.
 
-Run standalone (stdio transport):        python mnemo/mcp_server.py
-Inspect/dev with the MCP Inspector:      mcp dev mnemo/mcp_server.py
+Run standalone (stdio transport):        python warden/mcp_server.py
+Inspect/dev with the MCP Inspector:      mcp dev warden/mcp_server.py
 Call it from a stdio client:             see test_mcp_client.py (project root)
 """
 import json
@@ -27,17 +27,17 @@ from mcp.server.fastmcp import FastMCP
 
 from datahub.ingestion.graph.client import DataHubGraph, DataHubGraphConfig
 
-from mnemo.agent import MnemoAgent
+from warden.agent import WardenAgent
 
 load_dotenv()
 
-mcp = FastMCP("mnemo")
+mcp = FastMCP("warden")
 
 _graph = None
 _agent = None
 
 
-def _get_agent() -> MnemoAgent:
+def _get_agent() -> WardenAgent:
     """Lazy singleton — one DataHubGraph connection per server process, built on first tool call
     (not at import time), so `mcp dev`/module import never requires a live GMS to succeed."""
     global _graph, _agent
@@ -46,18 +46,18 @@ def _get_agent() -> MnemoAgent:
             server=os.getenv("DATAHUB_GMS_URL", "http://localhost:8090"),
             token=os.getenv("DATAHUB_GMS_TOKEN") or None,
         ))
-        _agent = MnemoAgent(_graph)
+        _agent = WardenAgent(_graph)
     return _agent
 
 
 @mcp.tool()
 def assess_model_drift(model_urn: str) -> dict:
-    """Assess whether an ML model's input sources have silently drifted since Mnemo last
-    remembered them, using DataHub's live lineage graph plus Mnemo's persisted belief memory.
+    """Assess whether an ML model's input sources have silently drifted since Warden last
+    remembered them, using DataHub's live lineage graph plus Warden's persisted belief memory.
 
     Catches a class of change a plain schema-diff cannot see: a feature silently re-pointed to a
     new upstream source table under an UNCHANGED name/description (e.g. fct_users_created ->
-    fct_users_created_v2). Mnemo remembers the prior source-set as a structured property on the
+    fct_users_created_v2). Warden remembers the prior source-set as a structured property on the
     entity; a delta is folded in as contradicting Bayesian evidence, dropping confidence and
     (below threshold) routing to a DataHub Proposal instead of silent auto-trust.
 
@@ -67,17 +67,17 @@ def assess_model_drift(model_urn: str) -> dict:
 
     Returns:
         dict with keys:
-          verdict: "auto-write" | "open-proposal" | "needs-review" (MnemoAgent.govern(belief))
+          verdict: "auto-write" | "open-proposal" | "needs-review" (WardenAgent.govern(belief))
           confidence: float in [0.02, 0.98] — Belief.confidence, the Bayesian posterior
           evidence: {
             "changed": bool, "remembered_sources": [...], "current_sources": [...],
             "provenance": [...] (Belief's evidence log), "measured_drift": {...} | None (PSI, if
-            DataHub holds field-histogram profiles for both old/new source — see mnemo/drift.py),
-            "reflection": {...} | None (best-effort lineage-wide insight via MnemoAgent.reflect;
+            DataHub holds field-histogram profiles for both old/new source — see warden/drift.py),
+            "reflection": {...} | None (best-effort lineage-wide insight via WardenAgent.reflect;
             None if too few upstream memories exist or nothing new survived its guards)
           }
-          memory_recall: {"prior_summary": {...} | None} — what MnemoMemory.load() held for this
-            URN's mnemo.summary BEFORE this call's own re-score (genuine prior recall, not the
+          memory_recall: {"prior_summary": {...} | None} — what WardenMemory.load() held for this
+            URN's warden.summary BEFORE this call's own re-score (genuine prior recall, not the
             post-check state)
     """
     agent = _get_agent()
@@ -92,7 +92,7 @@ def assess_model_drift(model_urn: str) -> dict:
         prior_summary = prior_summary_json
 
     changed, remembered, now, belief, drift_info = agent.check_model_inputs(model_urn)
-    verdict = MnemoAgent.govern(belief)
+    verdict = WardenAgent.govern(belief)
 
     reflection = None
     try:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-demo_e2e.py — deterministic, CI-style orchestrator for the Mnemo demo-video capture.
+demo_e2e.py — deterministic, CI-style orchestrator for the Warden demo-video capture.
 
 One run = the entire recordable arc, in one shot, with a golden log at the end that says
 GREEN or RED — never a silently-wrong number:
@@ -9,10 +9,10 @@ GREEN or RED — never a silently-wrong number:
     -> seed the graph (idempotent, fixed seeds)
     -> hero drift            (run_ml_drift_demo.py, subprocess, UNTOUCHED)          0.901 -> 0.600
     -> measured drift        (run_measured_drift_demo.py, subprocess, UNTOUCHED)    kill-shot vs measured
-    -> lineage reflection    (mnemo.reflection.reflect, INLINE, llm=None/stub — forced deterministic,
+    -> lineage reflection    (warden.reflection.reflect, INLINE, llm=None/stub — forced deterministic,
                                so the recorded text never varies take-to-take; run_reflection_demo.py
                                itself is untouched and still available separately with real Ollama text)
-    -> compounding proof     (a SECOND, independent MnemoMemory.load on the SAME asset resumes the
+    -> compounding proof     (a SECOND, independent WardenMemory.load on the SAME asset resumes the
                                posterior the hero drift just wrote — proof memory lives ON the graph,
                                not in any one process, and continues instead of resetting to neutral 0.5)
     -> confidence-timeseries chart (examples/confidence_timeseries.svg, built from REAL Belief.provenance
@@ -49,8 +49,8 @@ STEP_TIMEOUT_S = 180  # a hanging take must abort visibly, never spin forever
 HERO_BASELINE = 0.901
 HERO_FINAL = 0.600
 MEASURED_FINAL = 0.251
-PSI_STABLE_MAX = 0.10      # mnemo/drift.py PSI_STABLE
-PSI_SIGNIFICANT_MIN = 0.25  # mnemo/drift.py PSI_SIGNIFICANT
+PSI_STABLE_MAX = 0.10      # warden/drift.py PSI_STABLE
+PSI_SIGNIFICANT_MIN = 0.25  # warden/drift.py PSI_SIGNIFICANT
 COMPOUND_RESUMED = 0.600    # what a SECOND, independent load of churn_model must resume at
 COMPOUND_AFTER = 0.874      # after folding in one more corroborating "lineage" event on top
 EVAL_EXPECT = {"WITHOUT": 0.52, "WITH_RAW": 0.91, "WITH": 1.00, "PLACEBO": 0.33}
@@ -193,7 +193,7 @@ def measured_drift() -> None:
 
 
 # --------------------------------------------------------------------------------------------- #
-# In-process beats (reuse the mnemo library directly; never touch the demo script files)
+# In-process beats (reuse the warden library directly; never touch the demo script files)
 # --------------------------------------------------------------------------------------------- #
 def _graph():
     from dotenv import load_dotenv
@@ -217,10 +217,10 @@ def reflection_beat(g) -> dict:
         UpstreamClass, UpstreamLineageClass,
     )
     from confidence_model import Belief
-    from mnemo.memory import MnemoMemory
-    from mnemo.reflection import reflect, define_reflection_property
+    from warden.memory import WardenMemory
+    from warden.reflection import reflect, define_reflection_property
 
-    mem = MnemoMemory(g)
+    mem = WardenMemory(g)
     dsA = make_dataset_urn("hive", "refl_dsA", "PROD")
     dsB = make_dataset_urn("hive", "refl_dsB", "PROD")
     dsC = make_dataset_urn("hive", "refl_dsC", "PROD")
@@ -276,7 +276,7 @@ def reflection_beat(g) -> dict:
 
 def compounding_proof(g) -> None:
     """The compounding claim, proven with the mechanism that actually implements it
-    (MnemoMemory.load/save persisting Belief.log_odds/mass on the graph):
+    (WardenMemory.load/save persisting Belief.log_odds/mass on the graph):
 
       PASS 1 = the hero-drift subprocess that just ran: fresh Belief() -> 0.901 -> observes the
                silent re-point -> 0.600, saved onto churn_model.
@@ -285,10 +285,10 @@ def compounding_proof(g) -> None:
                instead of resetting to the neutral prior 0.500, then folds in one more corroborating
                event on top — proving the posterior compounds forward rather than restarting.
     """
-    log("=== STEP: compounding proof (MnemoMemory.load resumes posterior across a fresh process) ===")
-    from mnemo.memory import MnemoMemory
+    log("=== STEP: compounding proof (WardenMemory.load resumes posterior across a fresh process) ===")
+    from warden.memory import WardenMemory
     MODEL = "urn:li:mlModel:(urn:li:dataPlatform:mlflow,churn_model,PROD)"
-    mem = MnemoMemory(g)
+    mem = WardenMemory(g)
 
     belief_resumed, summary = mem.load(MODEL)
     resumed_conf = belief_resumed.confidence  # snapshot BEFORE the update below mutates belief_resumed in place
@@ -317,8 +317,8 @@ def compounding_proof(g) -> None:
 # --------------------------------------------------------------------------------------------- #
 def build_confidence_chart(g, out_path: str) -> None:
     log("=== STEP: confidence-timeseries chart (examples/confidence_timeseries.svg) ===")
-    from mnemo.memory import MnemoMemory
-    mem = MnemoMemory(g)
+    from warden.memory import WardenMemory
+    mem = WardenMemory(g)
 
     CHURN_MODEL = "urn:li:mlModel:(urn:li:dataPlatform:mlflow,churn_model,PROD)"
     KILL_SHOT_MODEL = "urn:li:mlModel:(urn:li:dataPlatform:mlflow,kill_shot_model,PROD)"
@@ -371,9 +371,9 @@ def build_confidence_chart(g, out_path: str) -> None:
 
     parts = [f'<rect width="{W}" height="{H}" fill="#1b1f27" rx="8"/>',
              f'<text x="{pad_l}" y="26" font-size="17" font-weight="bold" fill="#e6e6e6">'
-             f'Mnemo confidence timeseries — the silent drop, live from the graph</text>',
+             f'Warden confidence timeseries — the silent drop, live from the graph</text>',
              f'<text x="{pad_l}" y="46" font-size="12" fill="#8a93a2">Belief.provenance (c_after per '
-             f'update), read back via MnemoMemory.load — not simulated.</text>',
+             f'update), read back via WardenMemory.load — not simulated.</text>',
              f'<text x="{pad_l}" y="62" font-size="12" fill="#8a93a2">All three arcs share the same '
              f'start; they fork at the last event, where a measured PSI term is (or isn\'t) folded in.</text>']
 
@@ -475,7 +475,7 @@ def finish(ok: bool) -> None:
 
 
 def main() -> None:
-    log("Mnemo demo_e2e — deterministic CI-style capture run")
+    log("Warden demo_e2e — deterministic CI-style capture run")
     preflight()
 
     seed_graph()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Crown feature test: lineage-wide reflection. Build a 3-deep upstream chain, give each asset a memory,
-then reflect on the model — Mnemo synthesizes an insight that lives on NO single asset, grounded in
+then reflect on the model — Warden synthesizes an insight that lives on NO single asset, grounded in
 its own accumulated memories, with a pooled confidence + evidence chain, written onto the model.
 
 Run:  python run_reflection_demo.py   (needs DataHub up; LLM optional — uses deterministic stub)
@@ -23,14 +23,14 @@ from datahub.metadata.schema_classes import (
 )
 
 from confidence_model import Belief
-from mnemo.memory import MnemoMemory
-from mnemo.reflection import reflect, define_reflection_property, REFLECTION_PROP
-from mnemo.llm import make_reflection_llm
+from warden.memory import WardenMemory
+from warden.reflection import reflect, define_reflection_property, REFLECTION_PROP
+from warden.llm import make_reflection_llm
 
 load_dotenv()
 g = DataHubGraph(DataHubGraphConfig(server=os.getenv("DATAHUB_GMS_URL", "http://localhost:8090"),
                                     token=os.getenv("DATAHUB_GMS_TOKEN") or None))
-mem = MnemoMemory(g)
+mem = WardenMemory(g)
 
 dsA = make_dataset_urn("hive", "refl_dsA", "PROD")
 dsB = make_dataset_urn("hive", "refl_dsB", "PROD")

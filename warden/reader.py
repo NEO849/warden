@@ -2,13 +2,13 @@
 
 Two read paths:
   - DEFAULT (always on): the direct `acryl-datahub` SDK graph client (get_aspect/...) — get_context()
-    below. This is what mnemo/agent.py's drift detection actually relies on; unchanged, live-verified.
+    below. This is what warden/agent.py's drift detection actually relies on; unchanged, live-verified.
   - OPTIONAL (off by default): the OFFICIAL DataHub MCP server (github.com/acryldata/mcp-server-
     datahub), consumed as an MCP client over stdio, self-hosted on demand via `uvx`. Enable with
-    MNEMO_USE_MCP_READER=1. This is the "consume the DataHub MCP server" angle, additive to Mnemo
-    exposing ITSELF as an MCP tool (see mnemo/mcp_server.py). get_upstreams() below is the only
+    WARDEN_USE_MCP_READER=1. This is the "consume the DataHub MCP server" angle, additive to Warden
+    exposing ITSELF as an MCP tool (see warden/mcp_server.py). get_upstreams() below is the only
     place it plugs in, and even there it falls back to the SDK path on any failure — nothing in
-    mnemo/agent.py's check_model_inputs()/model_input_sources() calls this; the drift-detection
+    warden/agent.py's check_model_inputs()/model_input_sources() calls this; the drift-detection
     invariant path is untouched. Each MCP call spawns `uvx mcp-server-datahub` fresh (~10-15s,
     dominated by importing the full datahub SDK inside that subprocess) — fine for an optional/
     demo path, deliberately not swapped in as the hot path.
@@ -24,7 +24,7 @@ from datahub.metadata.schema_classes import (
     UpstreamLineageClass,
 )
 
-USE_MCP_READER = os.getenv("MNEMO_USE_MCP_READER", "0") == "1"
+USE_MCP_READER = os.getenv("WARDEN_USE_MCP_READER", "0") == "1"
 
 
 class DataHubReader:
@@ -84,7 +84,7 @@ class DataHubReader:
         return asyncio.run(self._get_upstreams_via_mcp_async(urn, max_hops))
 
     def get_upstreams(self, urn: str, max_hops: int = 1) -> list:
-        """Upstream URNs for `urn`. Uses the MCP-backed reader when MNEMO_USE_MCP_READER=1 and
+        """Upstream URNs for `urn`. Uses the MCP-backed reader when WARDEN_USE_MCP_READER=1 and
         that call succeeds; otherwise (the default, and on any MCP failure) falls back to the
         direct SDK path via UpstreamLineageClass — the always-on, live-verified default. The MCP
         path is purely additive here; nothing load-bearing depends on it."""

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-test_mcp_client.py — stdio MCP client that spawns mnemo/mcp_server.py as a subprocess and calls
+test_mcp_client.py — stdio MCP client that spawns warden/mcp_server.py as a subprocess and calls
 its assess_model_drift tool against the LIVE DataHub instance, exactly as an MCP host (Claude
 Desktop, another agent) would. Proves the MCP wrapper actually works end-to-end, not just that
 it imports.
 
-Model URN matches the one seeded by run_ml_drift_demo.py / run_agent.py (see mnemo constants
+Model URN matches the one seeded by run_ml_drift_demo.py / run_agent.py (see warden constants
 there): urn:li:mlModel:(urn:li:dataPlatform:mlflow,churn_model,PROD)
 
-Run:  python test_mcp_client.py    (needs DataHub up; spawns its own mnemo/mcp_server.py)
+Run:  python test_mcp_client.py    (needs DataHub up; spawns its own warden/mcp_server.py)
 """
 import asyncio
 import json
@@ -19,7 +19,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 MODEL_URN = "urn:li:mlModel:(urn:li:dataPlatform:mlflow,churn_model,PROD)"
-SERVER_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mnemo", "mcp_server.py")
+SERVER_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "warden", "mcp_server.py")
 
 
 async def main():

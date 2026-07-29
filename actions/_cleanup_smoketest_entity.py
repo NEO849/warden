@@ -14,6 +14,6 @@ g = DataHubGraph(DataHubGraphConfig(
     server=os.getenv("DATAHUB_GMS_URL", "http://localhost:8090"),
     token=os.getenv("DATAHUB_GMS_TOKEN") or None,
 ))
-urn = make_dataset_urn("hive", "mnemo_wake_smoketest", "PROD")
+urn = make_dataset_urn("hive", "warden_wake_smoketest", "PROD")
 g.soft_delete_entity(urn)
 print("soft-deleted", urn)

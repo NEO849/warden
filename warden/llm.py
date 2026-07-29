@@ -32,8 +32,8 @@ REFLECT_SYSTEM = (
 
 
 def make_reflection_llm():
-    """Return an llm(memories, event) -> insights callable for mnemo.reflection.reflect."""
-    from mnemo.reflection import _stub_synthesis
+    """Return an llm(memories, event) -> insights callable for warden.reflection.reflect."""
+    from warden.reflection import _stub_synthesis
 
     def _llm(memories, event):
         lines = [f'{i+1}. urn={m["urn"]} hops={m["hops"]} confidence={m["confidence"]:.2f} '

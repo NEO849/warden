@@ -6,7 +6,7 @@
 > API signatures against `scratchpad/audit_source.md` (whitebox source-auditor output) on day 1.
 
 ## The gate (must both be GREEN by end of day 3)
-- [ ] **PROOF A** — write a `mnemo.memory` **structured property** onto a sample dataset via SDK, read it back. (No GMS rebuild.)
+- [ ] **PROOF A** — write a `warden.memory` **structured property** onto a sample dataset via SDK, read it back. (No GMS rebuild.)
 - [ ] **PROOF B** — a minimal custom **Action** fires on a real `EntityChangeEvent_v1` when you change a dataset in the UI.
 
 If A fails → fallback: store memory as a **glossary/documentation aspect** or an external sidecar keyed by URN (lose "first-class" polish, keep the loop).
@@ -32,7 +32,7 @@ ANTHROPIC_API_KEY=<key>   # only needed once agent logic starts (day 4+)
 ## Step 1 — PROOF A: structured-property memory (day 1–2)
 ```bash
 # 1. define the property (no rebuild — this is the whole feasibility bet)
-datahub properties upsert -f mnemo_memory_property.yaml
+datahub properties upsert -f warden_memory_property.yaml
 
 # 2. write a memory value onto a sample dataset + read it back
 python 01_write_read_memory.py
@@ -43,7 +43,7 @@ Expect: script prints the memory record it wrote, then reads it back identical.
 ## Step 2 — PROOF B: event-driven Action (day 2–3)
 ```bash
 # run the action listener
-datahub actions -c mnemo_action_config.yaml
+datahub actions -c warden_action_config.yaml
 # then in the UI: edit a sample dataset's description or schema
 # → watch the terminal print the EntityChangeEvent
 ```

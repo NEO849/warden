@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-One coherent agent, one cycle: MnemoAgent observes a model, remembers its inputs, and when an upstream
+One coherent agent, one cycle: WardenAgent observes a model, remembers its inputs, and when an upstream
 source is silently re-pointed it detects the delta, re-scores, governs (opens a Proposal), and reflects.
 This is the demo scripts' logic unified behind a single object.
 
@@ -22,12 +22,12 @@ from datahub.metadata.schema_classes import (
     MLModelPropertiesClass, UpstreamClass, UpstreamLineageClass,
 )
 
-from mnemo.agent import MnemoAgent
+from warden.agent import WardenAgent
 
 load_dotenv()
 g = DataHubGraph(DataHubGraphConfig(server=os.getenv("DATAHUB_GMS_URL", "http://localhost:8090"),
                                     token=os.getenv("DATAHUB_GMS_TOKEN") or None))
-agent = MnemoAgent(g)  # llm=make_reflection_llm() to use Ollama for the reflection text
+agent = WardenAgent(g)  # llm=make_reflection_llm() to use Ollama for the reflection text
 
 FCT = make_dataset_urn("hive", "fct_users_created", "PROD")
 FCT2 = make_dataset_urn("hive", "fct_users_created_v2", "PROD")

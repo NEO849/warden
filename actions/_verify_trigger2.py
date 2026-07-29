@@ -18,6 +18,6 @@ g = DataHubGraph(DataHubGraphConfig(
     server=os.getenv("DATAHUB_GMS_URL", "http://localhost:8090"),
     token=os.getenv("DATAHUB_GMS_TOKEN") or None,
 ))
-WAKE_MODEL = "urn:li:mlModel:(urn:li:dataPlatform:mlflow,mnemo_wake_verify_model,PROD)"
-g.emit(MCP(entityUrn=WAKE_MODEL, aspect=GlobalTagsClass(tags=[TagAssociationClass(tag="urn:li:tag:mnemo_wake_trigger_2")])))
+WAKE_MODEL = "urn:li:mlModel:(urn:li:dataPlatform:mlflow,warden_wake_verify_model,PROD)"
+g.emit(MCP(entityUrn=WAKE_MODEL, aspect=GlobalTagsClass(tags=[TagAssociationClass(tag="urn:li:tag:warden_wake_trigger_2")])))
 print("re-fired wake trigger (tag swap) on", WAKE_MODEL)

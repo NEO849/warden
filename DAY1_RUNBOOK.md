@@ -1,4 +1,4 @@
-# Day-1 Runbook — Mnemo Infra Spike (the go/no-go gate)
+# Day-1 Runbook — Warden Infra Spike (the go/no-go gate)
 
 > Goal by end of day 3: **PROOF A** (memory writes to the graph, no rebuild), **PROOF B** (an event wakes
 > our Action), **PROOF C** (ML lineage stands up — we committed to the Production ML Agents track).
@@ -69,7 +69,7 @@ This is the single most important check of the whole spike.
 source .venv/bin/activate
 python spike/01_write_read_memory.py
 ```
-**GREEN** = it prints `mnemo.summary` + `mnemo.confidence = [0.6]` read back, then `PROOF A GREEN ✅`.
+**GREEN** = it prints `warden.summary` + `warden.confidence = [0.6]` read back, then `PROOF A GREEN ✅`.
 → The custom-PDL-aspect GMS rebuild is off the critical path forever. Proceed.
 
 **If RED — triage in this order:**
@@ -85,16 +85,16 @@ python spike/01_write_read_memory.py
 Terminal 1:
 ```bash
 source .venv/bin/activate
-cd spike && datahub actions -c mnemo_action_config.yaml
+cd spike && datahub actions -c warden_action_config.yaml
 ```
 Terminal 2 (or the UI): edit `fct_users_created`'s **description** or a **schema field**, save.
-→ Terminal 1 should print `MNEMO WAKE ▶ ... DOCUMENTATION/... ` within a few seconds. **GREEN.**
+→ Terminal 1 should print `WARDEN WAKE ▶ ... DOCUMENTATION/... ` within a few seconds. **GREEN.**
 
 **If RED:**
 - Consumer can't reach Kafka (`localhost:9092` / schema-registry `8081`) → confirm those ports from Step 0;
   if Docker networking hides them, run the action **inside** the actions container or expose the ports.
 - No event fires → the change may not emit an `EntityChangeEvent` (some edits only emit MCL) → try a
-  clearer change (add a tag/term) OR widen the filter categories in `mnemo_action_config.yaml`.
+  clearer change (add a tag/term) OR widen the filter categories in `warden_action_config.yaml`.
 - **Fallback:** the polling loop over `graph.get_urns_by_filter` + `lastModified` (noted in the config).
   Event-driven is nicer for the demo, but polling keeps us moving; revisit later.
 

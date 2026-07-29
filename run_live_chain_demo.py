@@ -12,10 +12,10 @@ controls what happens to DataHub's official sample data").
 This script closes both gaps at once, on ONE run: a real silent source-drift, on DataHub's own
 official sample-data graph (SampleHiveDataset / SampleHdfsDataset / scienceModel — the exact
 fixture every `datahub docker quickstart` ships), caught not by polling but by the ALWAYS-ON
-`mnemo-wake` systemd service reacting to a genuine Kafka EntityChangeEvent_v1, which resolves
-which model to re-check AUTONOMOUSLY via reverse lineage (G2, actions/mnemo_wake_action.py::
+`warden-wake` systemd service reacting to a genuine Kafka EntityChangeEvent_v1, which resolves
+which model to re-check AUTONOMOUSLY via reverse lineage (G2, actions/warden_wake_action.py::
 _reverse_lineage_models) rather than a hardcoded watch-list, and which now ACTUALLY WRITES real
-governance onto the graph (G1, mnemo/agent.py::actuate_governance) instead of only logging it.
+governance onto the graph (G1, warden/agent.py::actuate_governance) instead of only logging it.
 
 Every stage below is a READ-BACK GATE: poll the live graph/console/subprocess until the expected
 state is durably true, with a timeout that aborts LOUDLY on failure — never a fixed `sleep`, and
@@ -23,14 +23,14 @@ never a silently-wrong "looks done" assumption. Two consecutive runs of this scr
 reach GREEN (idempotency is designed in at the baseline-reset step, not assumed).
 
 What each stage proves:
-  PREFLIGHT      GMS + the mnemo-wake service + the trust console are all actually up.
+  PREFLIGHT      GMS + the warden-wake service + the trust console are all actually up.
   BASELINE RESET Idempotent: (re)attach a bridge MLFeature(sources=[SampleHiveDataset]) onto
                  scienceModel (closing run_realdata_demo.py's documented missing edge) and
                  (re)establish a fresh Belief at exactly confidence=0.901 — regardless of what
                  state a PRIOR run of this script left behind.
   RE-POINT       The feature's source silently swaps to SampleHdfsDataset — same name/description,
                  the exact "a schema-diff sees nothing" shape the hero demo is built around.
-  GATE 1 / 1b    Poll until the re-point is durably visible via BOTH the read path Mnemo's own
+  GATE 1 / 1b    Poll until the re-point is durably visible via BOTH the read path Warden's own
                  drift-detection uses (agent.model_input_sources) AND the read path G2's
                  reverse-lineage depends on (the GMS relationships index) — two different DataHub
                  subsystems that can lag independently; firing the Kafka trigger before either
@@ -39,15 +39,15 @@ What each stage proves:
   KAFKA TRIGGER  A fresh (never-before-seen) tag lands on SampleHdfsDataset — the dataset that is
                  now scienceModel's current source. This is a category=TAG, entityType=dataset
                  event; the running wake service never had scienceModel in its static
-                 MNEMO_WATCH_MODELS list, so if it still gets woken and governed, that is live
+                 WARDEN_WATCH_MODELS list, so if it still gets woken and governed, that is live
                  proof of G2 (reverse lineage), not the static fallback.
   GATE 3         Poll scienceModel's structured properties until the wake has actually written
-                 governance_status=NEEDS_REVIEW + a finding + the mnemo-needs-review tag (async,
+                 governance_status=NEEDS_REVIEW + a finding + the warden-needs-review tag (async,
                  the wake service polls Kafka on its own schedule — budget ~30-60s).
   GATE 4         The read-only trust console (console/app.py) — started here if not already
                  running, stopped again at the end — independently confirms the same state
-                 through its own HTTP API, never importing mnemo/agent.py.
-  GATE 5         A DIFFERENT script, interop_demo.py, run as a subprocess with zero Mnemo
+                 through its own HTTP API, never importing warden/agent.py.
+  GATE 5         A DIFFERENT script, interop_demo.py, run as a subprocess with zero Warden
                  knowledge, reads the same structured property off the graph and REFUSES to
                  recommend the model for production — the moat, demonstrated live.
 
@@ -76,7 +76,7 @@ from dotenv import load_dotenv  # noqa: E402
 load_dotenv(os.path.join(ROOT, ".env"))
 
 GMS_URL = os.getenv("DATAHUB_GMS_URL", "http://localhost:8090")
-CONSOLE_PORT = int(os.getenv("MNEMO_CONSOLE_PORT", "8808"))
+CONSOLE_PORT = int(os.getenv("WARDEN_CONSOLE_PORT", "8808"))
 CONSOLE_BASE = f"http://127.0.0.1:{CONSOLE_PORT}"
 PY = sys.executable
 
@@ -90,13 +90,13 @@ TOL = 0.003
 HIVE = "urn:li:dataset:(urn:li:dataPlatform:hive,SampleHiveDataset,PROD)"
 HDFS = "urn:li:dataset:(urn:li:dataPlatform:hdfs,SampleHdfsDataset,PROD)"
 SCIENCE_MODEL = "urn:li:mlModel:(urn:li:dataPlatform:science,scienceModel,PROD)"
-NEEDS_REVIEW_TAG_URN = "urn:li:tag:mnemo-needs-review"
+NEEDS_REVIEW_TAG_URN = "urn:li:tag:warden-needs-review"
 
 # The ONE author-added edge this script establishes (idempotently, every run): a bridge feature
 # that closes scienceModel's missing feature-source link (see run_realdata_demo.py STEP 5's
 # honesty note: the real bootstrap fixture ships no feature-store-shaped model). This is the
 # only new entity this script introduces; everything else it touches is DataHub's own fixture.
-BRIDGE_FEATURE = "urn:li:mlFeature:(science_features,mnemo_livechain_feature)"
+BRIDGE_FEATURE = "urn:li:mlFeature:(science_features,warden_livechain_feature)"
 
 LOG_PATH = os.path.join(ROOT, f"run_live_chain_demo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
 _log_fh = open(LOG_PATH, "w")
@@ -220,11 +220,11 @@ def preflight() -> None:
               f"Start it (`datahub docker quickstart`) and re-run.")
 
     svc_status = subprocess.run(
-        ["systemctl", "is-active", "mnemo-wake.service"], capture_output=True, text=True
+        ["systemctl", "is-active", "warden-wake.service"], capture_output=True, text=True
     ).stdout.strip()
-    if not check("preflight: mnemo-wake.service active", svc_status == "active",
-                 f"systemctl is-active mnemo-wake.service -> {svc_status!r}"):
-        abort("mnemo-wake.service is not active. Start it: `systemctl start mnemo-wake.service`, "
+    if not check("preflight: warden-wake.service active", svc_status == "active",
+                 f"systemctl is-active warden-wake.service -> {svc_status!r}"):
+        abort("warden-wake.service is not active. Start it: `systemctl start warden-wake.service`, "
               "wait ~20-30s for the Kafka connect, then re-run.")
 
     _start_console_if_needed()
@@ -253,7 +253,7 @@ def baseline_reset(g, agent) -> None:
     # Force the bridge feature's source back to SampleHiveDataset regardless of where a prior run
     # (or the live wake) left it — this alone makes the reset idempotent w.r.t. the re-point step.
     g.emit(MCP(entityUrn=BRIDGE_FEATURE, aspect=MLFeaturePropertiesClass(
-        description="Mnemo live-chain bridge feature (author-added edge; closes the missing "
+        description="Warden live-chain bridge feature (author-added edge; closes the missing "
                     "feature-source link on DataHub's own scienceModel sample fixture — see "
                     "run_realdata_demo.py STEP 5)",
         sources=[HIVE],
@@ -270,8 +270,8 @@ def baseline_reset(g, agent) -> None:
         f"description={kwargs.get('description')!r})")
 
     from confidence_model import Belief
-    from mnemo.memory import MnemoMemory
-    mem = MnemoMemory(g)
+    from warden.memory import WardenMemory
+    mem = WardenMemory(g)
     b = Belief()
     b.update("lineage", corroborates=True, hops=2, quality=0.9, event_id="chain_baseline1")
     b.update("lineage", corroborates=True, hops=0, quality=1.0, event_id="chain_baseline2")
@@ -294,7 +294,7 @@ def silent_repoint_and_gate1(g, agent) -> None:
     from datahub.metadata.schema_classes import MLFeaturePropertiesClass
 
     g.emit(MCP(entityUrn=BRIDGE_FEATURE, aspect=MLFeaturePropertiesClass(
-        description="Mnemo live-chain bridge feature (author-added edge; closes the missing "
+        description="Warden live-chain bridge feature (author-added edge; closes the missing "
                     "feature-source link on DataHub's own scienceModel sample fixture — see "
                     "run_realdata_demo.py STEP 5)",
         sources=[HDFS],
@@ -345,10 +345,10 @@ def fire_kafka_trigger(g) -> None:
     # FRESH tag value every run — re-emitting an IDENTICAL GlobalTags aspect is a no-op diff and
     # does not generate a new EntityChangeEvent (empirically confirmed, see
     # actions/_verify_trigger2.py and this script's own dry-run history).
-    fresh_tag = f"urn:li:tag:mnemo-livechain-wake-{int(time.time())}"
+    fresh_tag = f"urn:li:tag:warden-livechain-wake-{int(time.time())}"
     g.emit(MCP(entityUrn=HDFS, aspect=GlobalTagsClass(tags=[TagAssociationClass(tag=fresh_tag)])))
     log(f"   tag-add fired on {HDFS} ({fresh_tag}) — entityType=dataset, category=TAG.")
-    log("   scienceModel is NOT in the running service's static MNEMO_WATCH_MODELS (that still "
+    log("   scienceModel is NOT in the running service's static WARDEN_WATCH_MODELS (that still "
         "defaults to churn_model) — so the wake reacting at all is live proof of G2's reverse "
         "lineage (dataset -> bridge feature -> scienceModel), not the static fallback.")
 
@@ -367,10 +367,10 @@ def gate3_wait_for_governance(g) -> None:
             for p in sp.properties:
                 qn = p.propertyUrn.split(":")[-1]
                 vals[qn] = p.values[0] if p.values else None
-        status = vals.get("mnemo.governance_status")
-        finding = vals.get("mnemo.finding")
+        status = vals.get("warden.governance_status")
+        finding = vals.get("warden.finding")
         try:
-            provenance = json.loads(vals.get("mnemo.provenance") or "[]")
+            provenance = json.loads(vals.get("warden.provenance") or "[]")
         except (json.JSONDecodeError, TypeError):
             provenance = []
         last_prov = provenance[-1] if provenance else {}
@@ -383,12 +383,12 @@ def gate3_wait_for_governance(g) -> None:
         # FIX: also require a fresh contradicting schema/input_delta evidence entry -- append-only,
         # so this can only become true once THIS run's wake event has actually been processed.
         # baseline_reset() itself never appends event_id="input_delta" (it only ever appends
-        # "lineage" events, and it REPLACES mnemo.provenance wholesale via a fresh Belief -- see
-        # MnemoMemory.save -- so the provenance list is guaranteed to start each run containing only
+        # "lineage" events, and it REPLACES warden.provenance wholesale via a fresh Belief -- see
+        # WardenMemory.save -- so the provenance list is guaranteed to start each run containing only
         # those 2 lineage entries). Checking the exact LAST entry (as opposed to: any input_delta
         # entry anywhere in the log) used to be required here -- BUT check_model_inputs() can also
         # append a SECOND, trailing "drift_stat"/input_delta entry right after "schema"/input_delta
-        # (mnemo/agent.py ~line 168, whenever a DatasetProfile pair exists for the swapped sources)
+        # (warden/agent.py ~line 168, whenever a DatasetProfile pair exists for the swapped sources)
         # -- so strict last-entry equality is fragile: it is only ever green today because the
         # sample fixtures happen to carry no DatasetProfile, not because the mechanism guarantees
         # it. FIX (robust, not weaker): accept ANY input_delta-tagged entry as long as at least one
@@ -400,13 +400,13 @@ def gate3_wait_for_governance(g) -> None:
         fresh_drift = any(p.get("source") == "schema" for p in input_delta_entries)
         # FIX A: the reverse-lineage resolution witness must be DURABLE on the graph, not provable
         # only by exclusion (no static watch-list configured) or by a wake_service.err.log line that
-        # doesn't survive a log rotation/reset. actions/mnemo_wake_action.py now threads
+        # doesn't survive a log rotation/reset. actions/warden_wake_action.py now threads
         # resolution_source ("reverse-lineage" | "static-watchlist") into
-        # MnemoAgent.check_model_inputs(..., via=...), which folds it onto the "schema" provenance
+        # WardenAgent.check_model_inputs(..., via=...), which folds it onto the "schema" provenance
         # entry itself (confidence_model.py::Belief.update's `via` param) -- so it round-trips
-        # through the exact same mnemo.provenance structured property GATE 3 already reads. Find
+        # through the exact same warden.provenance structured property GATE 3 already reads. Find
         # that schema entry among the fresh input_delta entries and assert via=="reverse-lineage":
-        # scienceModel is never in the wake service's static MNEMO_WATCH_MODELS (see
+        # scienceModel is never in the wake service's static WARDEN_WATCH_MODELS (see
         # fire_kafka_trigger's own comment), so this run can ONLY have gotten here via G2.
         schema_entry = next((p for p in input_delta_entries if p.get("source") == "schema"), {})
         witnessed_via = schema_entry.get("via")
@@ -419,7 +419,7 @@ def gate3_wait_for_governance(g) -> None:
         detail = (f"fresh_drift(input_delta_entries={input_delta_entries!r})={fresh_drift} "
                   f"on_graph_via={witnessed_via!r} status={status!r} "
                   f"finding={'<set>' if finding else None!r} needs_review_tag={has_review_tag} "
-                  f"confidence={vals.get('mnemo.confidence')}")
+                  f"confidence={vals.get('warden.confidence')}")
         return ok, detail
 
     ok, detail = poll_until("GATE 3", _check, timeout_s=60, interval_s=2.0)
@@ -431,7 +431,7 @@ def gate3_wait_for_governance(g) -> None:
     if not ok:
         abort("GATE 3 failed — the wake never wrote a fresh governance verdict for scienceModel "
               "(with an on-graph reverse-lineage witness) within 60s. Check "
-              "actions/wake_service.err.log for 'MNEMO WAKE' lines and confirm G2's reverse-lineage "
+              "actions/wake_service.err.log for 'WARDEN WAKE' lines and confirm G2's reverse-lineage "
               "resolved SampleHdfsDataset -> scienceModel (grep 'via=reverse-lineage').")
     # On-screen honesty (delivers the storyboard/README promise that the caveat is visible in the run,
     # not just in the docs): the DROP MAGNITUDE is a principled Bayesian log-odds update from the
@@ -457,7 +457,7 @@ def gate4_console_api() -> None:
           f"got {data.get('governance_status')!r}")
 
     # FLAKINESS FOUND & HANDLED, not silently papered over: console/app.py's `sources_drifted` is
-    # `bool(current) and set(current) != set(remembered)`. But mnemo/agent.py::check_model_inputs
+    # `bool(current) and set(current) != set(remembered)`. But warden/agent.py::check_model_inputs
     # OVERWRITES the remembered summary to `input_sources: now` in the SAME write that detects the
     # delta (agent.py ~line 170) -- BEFORE actuate_governance ever runs. So by the time GATE 3 has
     # confirmed governance_status=NEEDS_REVIEW, remembered and current have ALREADY converged and
@@ -490,10 +490,10 @@ def gate4_console_api() -> None:
 
 
 # --------------------------------------------------------------------------------------------- #
-# GATE 5 — a DIFFERENT agent, zero Mnemo knowledge, reads the graph and refuses
+# GATE 5 — a DIFFERENT agent, zero Warden knowledge, reads the graph and refuses
 # --------------------------------------------------------------------------------------------- #
 def gate5_interop() -> None:
-    log("=== GATE 5: interop_demo.py (different script, zero Mnemo code) refuses the flagged model ===")
+    log("=== GATE 5: interop_demo.py (different script, zero Warden code) refuses the flagged model ===")
     proc = subprocess.run(
         [PY, os.path.join(ROOT, "interop_demo.py"), "--server", GMS_URL, "--urn", SCIENCE_MODEL],
         cwd=ROOT, capture_output=True, text=True, timeout=30,
@@ -512,15 +512,15 @@ def gate5_interop() -> None:
 # Main
 # --------------------------------------------------------------------------------------------- #
 def main() -> None:
-    log("Mnemo run_live_chain_demo — deterministic live-graph orchestrator "
+    log("Warden run_live_chain_demo — deterministic live-graph orchestrator "
         "(poll-until-condition, zero fixed sleeps on the critical path)")
     preflight()
 
-    from mnemo.agent import MnemoAgent
+    from warden.agent import WardenAgent
     g = _graph()
-    agent = MnemoAgent(g)
-    agent.setup()  # idempotent: ensures mnemo.* structured properties + reflection prop + the
-                   # mnemo-needs-review tag entity are all defined (no-op if already defined)
+    agent = WardenAgent(g)
+    agent.setup()  # idempotent: ensures warden.* structured properties + reflection prop + the
+                   # warden-needs-review tag entity are all defined (no-op if already defined)
 
     baseline_reset(g, agent)
     silent_repoint_and_gate1(g, agent)

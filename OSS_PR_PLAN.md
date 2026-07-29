@@ -12,9 +12,9 @@
 the **`datahub-enrich`** skill's structured-properties documentation, and adds the
 **"agent memory + confidence via structured properties"** write-back pattern as a reusable reference.
 
-This is the exact pattern Mnemo is built on (define a typed property like `mnemo.confidence` /
-`mnemo.provenance` → write it programmatically as an agent → read it back), generalized so it is
-upstream-useful for any agent, not Mnemo-specific.
+This is the exact pattern Warden is built on (define a typed property like `warden.confidence` /
+`warden.provenance` → write it programmatically as an agent → read it back), generalized so it is
+upstream-useful for any agent, not Warden-specific.
 
 ### The objective gap (why a reviewer can't say "no")
 `skills/datahub-enrich/references/mutation-reference.md` §"Structured Properties" documents only
@@ -54,7 +54,7 @@ are already in-scope for the skill — the PR only documents what the skill can 
 2. **`references/agent-structured-properties.md`** — **NEW** (~60–90 lines). The reusable pattern:
    *define typed property → write value programmatically (agent) → read back*. Worked example uses
    an agent writing a `confidence` (NUMBER) + `provenance` (STRING, multi-value) + `summary` property
-   back onto a dataset — generic wording, no Mnemo branding. Include the round-trip read
+   back onto a dataset — generic wording, no Warden branding. Include the round-trip read
    (`datahub graphql` query of `structuredProperties`) so an agent can verify its own write.
 3. **`SKILL.md`** — one pointer line in the structured-properties row / references list pointing to
    `references/agent-structured-properties.md`. No frontmatter change.
@@ -101,7 +101,7 @@ Docs-only. No new skill, no manifest/version changes. `datahub-enrich` already d
 
 ## 5-step open-it checklist
 1. **Fork & branch:** `gh repo fork datahub-project/datahub-skills --clone`; `git checkout -b docs/structured-property-agent-writeback`.
-2. **Set up hooks & edit:** `pip install pre-commit && pre-commit install`; make the 3 edits above (new reference + mutation-reference block + SKILL.md pointer line). Keep example wording generic (no "Mnemo").
+2. **Set up hooks & edit:** `pip install pre-commit && pre-commit install`; make the 3 edits above (new reference + mutation-reference block + SKILL.md pointer line). Keep example wording generic (no "Warden").
 3. **Lint locally (must pass CI):** `pre-commit run --all-files` (prettier + markdownlint-cli2 + ruff); fix any formatting the hooks rewrite.
 4. **Commit & push:** commit with the `docs:` title above (PR title == squash message); `git push -u origin docs/structured-property-agent-writeback`.
 5. **Open PR:** `gh pr create --repo datahub-project/datahub-skills` using the title + body-file above (put the body in a temp file to avoid backtick/`$` shell issues); confirm the `Lint PR Title` and lint checks go green; respond to review. Link the PR in the hackathon submission as the OSS-bonus artifact.

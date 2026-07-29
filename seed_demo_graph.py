@@ -36,7 +36,7 @@ from datahub.metadata.schema_classes import (
     UpstreamLineageClass,
 )
 
-from mnemo import drift
+from warden import drift
 
 load_dotenv()
 g = DataHubGraph(DataHubGraphConfig(
@@ -83,7 +83,7 @@ def seed_datasets():
     # ownership
     g.emit(MCP(entityUrn=FCT, aspect=OwnershipClass(
         owners=[OwnerClass(owner="urn:li:corpuser:data_eng", type=OwnershipTypeClass.DATAOWNER)],
-        lastModified=AuditStampClass(time=NOW, actor="urn:li:corpuser:mnemo"))))
+        lastModified=AuditStampClass(time=NOW, actor="urn:li:corpuser:warden"))))
     print("[seed] raw_signups → fct_users_created (schema + lineage + owner)")
 
 
@@ -110,11 +110,11 @@ def seed_ml():
 def seed_profiles():
     """Block 1 (measured drift): give the OLD source (fct_users_created.signup_ts) and the NEW
     source (fct_users_created_v2.ingest_ts) a real DatasetProfileClass field histogram, seeded so
-    drift.py can compute a real PSI over them via mnemo.agent's profile-gated drift_stat term.
+    drift.py can compute a real PSI over them via warden.agent's profile-gated drift_stat term.
 
     Fixed seed, near-identical shape on purpose: this mirrors the run_ml_drift_demo.py hero case,
     where the column is renamed but the underlying distribution barely moves (PSI stays near the
-    "stable" band) — the exact case where a PSI/KS-only monitor would stay green, and only Mnemo's
+    "stable" band) — the exact case where a PSI/KS-only monitor would stay green, and only Warden's
     STRUCTURAL source-delta term catches the silent re-point.
     """
     old_samples = drift.sample(seed=42, n=2000, mean=3.5, stdev=1.2)

@@ -1,7 +1,7 @@
-"""console/app.py — Mnemo Trust Console: a read-only window onto the live DataHub graph.
+"""console/app.py — Warden Trust Console: a read-only window onto the live DataHub graph.
 
-WHAT THIS IS: the perception lever. It reads ONLY the mnemo.* structured properties and the
-mnemo-needs-review GlobalTag that MnemoAgent (mnemo/agent.py, a different block — not touched or
+WHAT THIS IS: the perception lever. It reads ONLY the warden.* structured properties and the
+warden-needs-review GlobalTag that WardenAgent (warden/agent.py, a different block — not touched or
 imported here) already writes to a live DataHub GMS, and renders them as a "trust console" — the
 5-second proof that a compounding-memory governance agent is running against real graph data right
 now, not a slideshow.
@@ -24,7 +24,7 @@ SECURITY (non-negotiable, do not soften):
     process to GMS; it is never included in, derived into, or logged alongside any HTTP response
     this app sends to a browser. ANTHROPIC_API_KEY is not read by this module at all.
   - GMS (:8090) and the DataHub UI (:9002) are never proxied, iframed, or re-exposed by any route
-    here — the console only ever returns the small, already-public mnemo.* fields as JSON/HTML.
+    here — the console only ever returns the small, already-public warden.* fields as JSON/HTML.
 """
 from __future__ import annotations
 
@@ -51,23 +51,23 @@ from datahub.metadata.schema_classes import (
 # --- config (env-driven, per the brief; no host override lever exists — see module docstring) ---
 GMS_URL = os.getenv("DATAHUB_GMS_URL", "http://localhost:8090")
 GMS_TOKEN = os.getenv("DATAHUB_GMS_TOKEN") or None
-CONSOLE_PORT = int(os.getenv("MNEMO_CONSOLE_PORT", "8808"))
-HEARTBEAT_AWAKE_WINDOW_S = int(os.getenv("MNEMO_HEARTBEAT_AWAKE_WINDOW_S", "3600"))
+CONSOLE_PORT = int(os.getenv("WARDEN_CONSOLE_PORT", "8808"))
+HEARTBEAT_AWAKE_WINDOW_S = int(os.getenv("WARDEN_HEARTBEAT_AWAKE_WINDOW_S", "3600"))
 
 STATIC_DIR = Path(__file__).parent / "static"
 REPO_ROOT = Path(__file__).parent.parent
 WAKE_LOG_PATH = REPO_ROOT / "actions" / "verify_run_SUCCESS.log"
 
-# The needs-review human-gate tag mnemo/agent.py actually writes (mnemo/agent.py::
+# The needs-review human-gate tag warden/agent.py actually writes (warden/agent.py::
 # NEEDS_REVIEW_TAG_URN). Duplicated here as a plain string constant (not imported) so this
-# console has zero import-time coupling to the mnemo/* package — it never needs mnemo/agent.py
+# console has zero import-time coupling to the warden/* package — it never needs warden/agent.py
 # to be import-safe or side-effect-free for the console to start.
-NEEDS_REVIEW_TAG_URN = "urn:li:tag:mnemo-needs-review"
+NEEDS_REVIEW_TAG_URN = "urn:li:tag:warden-needs-review"
 
 # Governance-verdict thresholds, mirrored (read-only, for DISPLAY classification only) from
 # confidence_model.py's Belief: TAU_PROPOSAL / N_MIN / the 0.85 auto-write cut. The authoritative
-# governance decision is whatever MnemoAgent.actuate_governance() already wrote into
-# mnemo.governance_status — this function only exists to show the finer-grained 3-way verdict
+# governance decision is whatever WardenAgent.actuate_governance() already wrote into
+# warden.governance_status — this function only exists to show the finer-grained 3-way verdict
 # (auto-write / open-proposal / needs-review) the UI wants, from the same public numbers.
 TAU_PROPOSAL = 0.70
 ACTIONABLE_HIGH_CONF = 0.85
@@ -77,12 +77,12 @@ _session = requests.Session()
 if GMS_TOKEN:
     _session.headers.update({"Authorization": f"Bearer {GMS_TOKEN}"})
 
-app = FastAPI(title="Mnemo Trust Console", docs_url=None, redoc_url=None)
+app = FastAPI(title="Warden Trust Console", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 def _graph() -> DataHubGraph:
-    # Fresh client per process (module-level singleton, lazy) — mirrors mnemo/mcp_server.py's
+    # Fresh client per process (module-level singleton, lazy) — mirrors warden/mcp_server.py's
     # _get_agent() lazy-singleton pattern so `import console.app` never requires a live GMS.
     global _graph_singleton
     try:
@@ -103,7 +103,7 @@ def _entity_type_segment(urn: str) -> str:
 
 def get_audit_time_ms(urn: str) -> int | None:
     """Best-effort: the epoch-ms audit timestamp of this entity's LAST structuredProperties write
-    — i.e. the last time Mnemo touched this asset ("last wake" for that specific model/dataset).
+    — i.e. the last time Warden touched this asset ("last wake" for that specific model/dataset).
     Read-only GET against GMS's OpenAPI v3 entity API (`?systemMetadata=true`), which is the only
     place the acryl-datahub SDK's typed get_aspect() does not surface an audit stamp. Returns None
     on any failure (entity never observed, GMS hiccup, etc.) — callers must handle None."""
@@ -122,8 +122,8 @@ def get_audit_time_ms(urn: str) -> int | None:
 
 
 def _read_structured_props(g: DataHubGraph, urn: str) -> dict:
-    """qualified-name -> value map of whatever mnemo.* structured properties sit on `urn` right
-    now. Same shape as mnemo/memory.py::MnemoMemory._read_values, reimplemented independently here
+    """qualified-name -> value map of whatever warden.* structured properties sit on `urn` right
+    now. Same shape as warden/memory.py::WardenMemory._read_values, reimplemented independently here
     (not imported) so the console has no load-bearing dependency on that other block's file."""
     sp = g.get_aspect(urn, StructuredPropertiesClass)
     vals: dict = {}
@@ -136,8 +136,8 @@ def _read_structured_props(g: DataHubGraph, urn: str) -> dict:
 
 def _model_input_sources_now(g: DataHubGraph, model_urn: str) -> list[str]:
     """Live current input sources for an mlModel, read straight off the graph — independently
-    reimplements mnemo/agent.py::MnemoAgent.model_input_sources's read-only query (mlModel ->
-    mlFeatures -> each feature's `sources`) so this console never imports mnemo/agent.py. Used to
+    reimplements warden/agent.py::WardenAgent.model_input_sources's read-only query (mlModel ->
+    mlFeatures -> each feature's `sources`) so this console never imports warden/agent.py. Used to
     compute "current" for the remembered-vs-current drift comparison in /api/model/{urn}."""
     mp = g.get_aspect(model_urn, MLModelPropertiesClass)
     srcs: list[str] = []
@@ -162,8 +162,8 @@ def _model_lineage_now(g: DataHubGraph, model_urn: str) -> list[dict]:
 
 
 def compute_verdict(confidence: float | None, mass: float | None) -> str | None:
-    """Display-only recompute of MnemoAgent.govern()'s 3-way verdict from the two public numbers
-    (mnemo.confidence, mnemo.mass) already on the graph. Order matters and mirrors govern()
+    """Display-only recompute of WardenAgent.govern()'s 3-way verdict from the two public numbers
+    (warden.confidence, warden.mass) already on the graph. Order matters and mirrors govern()
     exactly: auto-write is checked first (both the confidence AND mass gate must hold), then the
     proposal threshold, else the mid-band."""
     if confidence is None:
@@ -187,20 +187,20 @@ def _parse_json_field(raw) -> object:
 
 def _model_summary(g: DataHubGraph, urn: str) -> dict | None:
     """Lightweight per-model row for GET /api/models. Returns None if this entity has never been
-    observed by Mnemo (no mnemo.confidence set yet) so untouched demo entities don't clutter the
+    observed by Warden (no warden.confidence set yet) so untouched demo entities don't clutter the
     console."""
     vals = _read_structured_props(g, urn)
-    confidence = vals.get("mnemo.confidence")
+    confidence = vals.get("warden.confidence")
     if confidence is None:
         return None
-    mass = vals.get("mnemo.mass")
+    mass = vals.get("warden.mass")
     audit_ms = get_audit_time_ms(urn)
     return {
         "urn": urn,
         "model_name": urn.split(",")[-2] if "," in urn else urn,
         "confidence": confidence,
         "verdict": compute_verdict(confidence, mass),
-        "governance_status": vals.get("mnemo.governance_status"),
+        "governance_status": vals.get("warden.governance_status"),
         "last_wake_ts": audit_ms,
         "last_wake_seconds_ago": (int(time.time() - audit_ms / 1000) if audit_ms else None),
     }
@@ -208,7 +208,7 @@ def _model_summary(g: DataHubGraph, urn: str) -> dict | None:
 
 @app.get("/api/models")
 def api_models():
-    """List of every mlModel entity Mnemo has ever observed (mnemo.confidence set), newest write
+    """List of every mlModel entity Warden has ever observed (warden.confidence set), newest write
     first. Read-only: get_urns_by_filter + get_aspect(StructuredPropertiesClass), no writes."""
     g = _graph()
     try:
@@ -229,13 +229,13 @@ def api_model(urn: str):
     g = _graph()
     vals = _read_structured_props(g, urn)
     if not vals:
-        raise HTTPException(status_code=404, detail="No mnemo.* properties on this URN yet")
+        raise HTTPException(status_code=404, detail="No warden.* properties on this URN yet")
 
-    confidence = vals.get("mnemo.confidence")
-    mass = vals.get("mnemo.mass")
-    summary = _parse_json_field(vals.get("mnemo.summary")) or {}
+    confidence = vals.get("warden.confidence")
+    mass = vals.get("warden.mass")
+    summary = _parse_json_field(vals.get("warden.summary")) or {}
     remembered_sources = summary.get("input_sources", []) if isinstance(summary, dict) else []
-    provenance = _parse_json_field(vals.get("mnemo.provenance")) or []
+    provenance = _parse_json_field(vals.get("warden.provenance")) or []
 
     current_sources: list[str] = []
     lineage: list[dict] = []
@@ -259,11 +259,11 @@ def api_model(urn: str):
         "confidence": confidence,
         "mass": mass,
         "verdict": compute_verdict(confidence, mass),
-        "governance_status": vals.get("mnemo.governance_status"),
+        "governance_status": vals.get("warden.governance_status"),
         "needs_review_tag": NEEDS_REVIEW_TAG_URN in tag_list,
         "tags": tag_list,
-        "last_event": vals.get("mnemo.lastEvent"),
-        "agent_version": vals.get("mnemo.agentVersion"),
+        "last_event": vals.get("warden.lastEvent"),
+        "agent_version": vals.get("warden.agentVersion"),
         "summary": summary,
         "remembered_sources": remembered_sources,
         "current_sources": current_sources,
@@ -304,8 +304,8 @@ def _tail_wake_log_seconds_ago() -> int | None:
 @app.get("/api/heartbeat")
 def api_heartbeat():
     """{awake, last_event_seconds_ago, watching_count} — the 5-second-wow ticker's data source.
-    Primary signal: the freshest audit timestamp across every mlModel Mnemo currently watches
-    (a genuinely live number — it moves the instant MnemoAgent writes again). Fallback: tail the
+    Primary signal: the freshest audit timestamp across every mlModel Warden currently watches
+    (a genuinely live number — it moves the instant WardenAgent writes again). Fallback: tail the
     wake-consumer's own log for its last logged event, per the brief, used only if no watched
     model has an audit timestamp at all (e.g. a completely fresh GMS)."""
     g = _graph()

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PROOF A — define a Mnemo structured property, write it onto a sample dataset, read it back.
+PROOF A — define a Warden structured property, write it onto a sample dataset, read it back.
 If this round-trips, the custom-PDL-aspect GMS rebuild is OFF the critical path forever.
 
 ✅ Signatures below are SOURCE-VERIFIED against datahub metadata-ingestion examples
@@ -41,17 +41,17 @@ TARGET = make_dataset_urn(platform="hive", name="fct_users_created", env="PROD")
 def define_properties() -> None:
     """Emit MCPs against the built-in `structuredProperty` entity — NO GMS rebuild."""
     defs = [
-        StructuredProperties(id="mnemo.summary", qualified_name="mnemo.summary",
-                             display_name="Mnemo Summary", type="string",
+        StructuredProperties(id="warden.summary", qualified_name="warden.summary",
+                             display_name="Warden Summary", type="string",
                              cardinality="SINGLE", entity_types=["dataset"]),
-        StructuredProperties(id="mnemo.confidence", qualified_name="mnemo.confidence",
-                             display_name="Mnemo Confidence", type="number",
+        StructuredProperties(id="warden.confidence", qualified_name="warden.confidence",
+                             display_name="Warden Confidence", type="number",
                              cardinality="SINGLE", entity_types=["dataset"]),
     ]
     for prop in defs:
         for mcp in prop.generate_mcps():
             g.emit(mcp)
-    print("[define] mnemo.summary + mnemo.confidence defined")
+    print("[define] warden.summary + warden.confidence defined")
 
 
 def write_memory() -> None:
@@ -60,10 +60,10 @@ def write_memory() -> None:
     time.sleep(3)  # let the property definition index before attaching values
     aspect = StructuredPropertiesClass(properties=[
         StructuredPropertyValueAssignmentClass(
-            propertyUrn="urn:li:structuredProperty:mnemo.summary",
+            propertyUrn="urn:li:structuredProperty:warden.summary",
             values=["User-creation fact table. Grounds signup analytics."]),
         StructuredPropertyValueAssignmentClass(
-            propertyUrn="urn:li:structuredProperty:mnemo.confidence", values=[0.6]),
+            propertyUrn="urn:li:structuredProperty:warden.confidence", values=[0.6]),
     ])
     g.emit(MetadataChangeProposalWrapper(entityUrn=TARGET, aspect=aspect))
     print(f"[write] memory (confidence 0.6) written onto {TARGET}")
@@ -75,7 +75,7 @@ def read_memory() -> None:
     print("[read] structured properties on entity:")
     for p in props:
         print(f"    {p.propertyUrn} = {p.values}")
-    ok = any("mnemo.confidence" in p.propertyUrn for p in props)
+    ok = any("warden.confidence" in p.propertyUrn for p in props)
     print(f"\nPROOF A {'GREEN ✅' if ok else 'RED ❌ — check ENABLE_STRUCTURED_PROPERTIES / PAT'}")
 
 

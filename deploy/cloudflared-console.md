@@ -1,14 +1,14 @@
 # Exposing the Trust Console via Cloudflare Tunnel
 
 Human step only — Claude does not run this. The goal: make `console/app.py` reachable at
-`mnemo.<yourdomain>`, while `:8090` (GMS) and `:9002` (DataHub UI) stay bound to loopback forever.
+`warden.<yourdomain>`, while `:8090` (GMS) and `:9002` (DataHub UI) stay bound to loopback forever.
 
 ## 1. Start the console (if not already running as a service)
 
 ```bash
-sudo cp deploy/mnemo-console.service /etc/systemd/system/mnemo-console.service
+sudo cp deploy/warden-console.service /etc/systemd/system/warden-console.service
 sudo systemctl daemon-reload
-sudo systemctl enable --now mnemo-console
+sudo systemctl enable --now warden-console
 curl -s http://127.0.0.1:8808/api/heartbeat   # sanity check, still on loopback
 ```
 
@@ -16,8 +16,8 @@ curl -s http://127.0.0.1:8808/api/heartbeat   # sanity check, still on loopback
 
 ```bash
 cloudflared tunnel login
-cloudflared tunnel create mnemo-console
-cloudflared tunnel route dns mnemo-console mnemo.<yourdomain>
+cloudflared tunnel create warden-console
+cloudflared tunnel route dns warden-console warden.<yourdomain>
 ```
 
 ## 3. Ingress config — **only** the console, nothing else
@@ -25,11 +25,11 @@ cloudflared tunnel route dns mnemo-console mnemo.<yourdomain>
 `~/.cloudflared/config.yml`:
 
 ```yaml
-tunnel: mnemo-console
+tunnel: warden-console
 credentials-file: /root/.cloudflared/<tunnel-id>.json
 
 ingress:
-  - hostname: mnemo.<yourdomain>
+  - hostname: warden.<yourdomain>
     service: http://127.0.0.1:8808
   - service: http_status:404   # catch-all: everything else 404s, nothing else is routable
 ```
@@ -37,14 +37,14 @@ ingress:
 Run it:
 
 ```bash
-cloudflared tunnel run mnemo-console
+cloudflared tunnel run warden-console
 # or as a service: cloudflared service install
 ```
 
 ## 4. Put Cloudflare Access in front of it (recommended, not optional for anything sensitive)
 
 Even though the console is read-only and has no secrets in its responses, gate it with
-Cloudflare Access (Zero Trust → Access → Applications → add `mnemo.<yourdomain>`, policy =
+Cloudflare Access (Zero Trust → Access → Applications → add `warden.<yourdomain>`, policy =
 your email / allowed list) so it isn't a fully anonymous public page. This costs nothing at
 this scale and takes two minutes in the dashboard.
 

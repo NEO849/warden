@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Context-lift eval: does Mnemo's MEMORY measurably improve ML-risk triage accuracy?
+Context-lift eval: does Warden's MEMORY measurably improve ML-risk triage accuracy?
 
 Task: classify each (upstream change, model) as DRIFT / LEAKAGE / NO_RISK.
 Arms (same local Ollama model, temp 0, identical prompt except the memory block):
   WITHOUT  = raw metadata only (schema, lineage, the change)
-  WITH     = raw metadata + Mnemo memory (prior source-set + confidence; reflection)  ← the lift
+  WITH     = raw metadata + Warden memory (prior source-set + confidence; reflection)  ← the lift
   PLACEBO  = raw metadata + an UNRELATED asset's memory (equal budget) → controls for "more text"
 
 Fairness: the memory block gives REMEMBERED STATE, never the label. The model must still reason
@@ -21,7 +21,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from mnemo.llm import ollama_json
+from warden.llm import ollama_json
 
 CLASSES = ["DRIFT", "LEAKAGE", "NO_RISK"]
 SYSTEM = ("You are an ML production-risk triage agent. Given metadata about a model and a recent "
@@ -35,7 +35,7 @@ SYSTEM = ("You are an ML production-risk triage agent. Given metadata about a mo
 # hard cases where memory is weak/ambiguous so WITH is not trivially perfect, PLUS 6 ADVERSARIAL
 # cases (2/class, appended at the end — see "ADVERSARIAL" block below) that each defeat the trivial
 # schema-pattern shortcut a Rigor-Judge flagged (DRIFT=prior_source≠current_source, LEAKAGE=
-# current_source==label, NO_RISK=hash==hash). raw = facts shown to ALL arms; mem = Mnemo memory.
+# current_source==label, NO_RISK=hash==hash). raw = facts shown to ALL arms; mem = Warden memory.
 # The memory gives REMEMBERED STATE, never the label — the model must still reason.
 #
 # mem_raw = the same remembered state, but stripped to RAW FACTS ONLY (prior_source/prior_type/

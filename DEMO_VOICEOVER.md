@@ -1,4 +1,4 @@
-# Mnemo — Demo Voiceover Script (Kokoro `am_michael`, <3:00) — v2, matches `DEMO_STORYBOARD.md`
+# Warden — Demo Voiceover Script (Kokoro `am_michael`, <3:00) — v2, matches `DEMO_STORYBOARD.md`
 
 Production-ready voiceover, one block per storyboard beat, timed to what `run_ml_drift_demo.py` /
 `run_live_chain_demo.py` actually print on screen. **Same voice as the prior hackathon video:**
@@ -14,14 +14,14 @@ trim; nothing over-processed. Total target ~2:20, hard ceiling 3:00.
 
 > **Truth check (every line is backed by a live, passing run — no claim the code doesn't make):**
 > confidence `0.901 → 0.600` is real and written on the graph; the governance write is a real
-> `mnemo.governance_status=NEEDS_REVIEW` + `mnemo-needs-review` tag (NOT a Cloud "Proposal", which
+> `warden.governance_status=NEEDS_REVIEW` + `warden-needs-review` tag (NOT a Cloud "Proposal", which
 > OSS lacks); the Kafka wake, the reverse-lineage resolution, and the downstream refusal are all
 > **live-verified**, not scripted narration over a recording (`run_live_chain_demo_20260728_220100.log`,
 > 17/17 gates green); the eval bar (optional beat) is the real N=21 result.
 
 > **Usefulness anchor (say this — it's the "why does this matter" line a value-monitor demo can't say):**
 > A value- or PSI-drift monitor watches the *data flowing through* the model — it can only alarm
-> **after** bad data has already been ingested and scored. Mnemo watches the *structure of what feeds
+> **after** bad data has already been ingested and scored. Warden watches the *structure of what feeds
 > the model* — it catches the source swap **before** the next training run ever touches it.
 
 ---
@@ -32,11 +32,11 @@ trim; nothing over-processed. Total target ~2:20, hard ceiling 3:00.
 > Someone re-points an upstream table. Same column names. Same feature. No alert fires.
 > The model just quietly starts scoring on the wrong data. And nobody notices, until the business does.
 
-## 02 — MEMORY, THE MECHANIC (0:15–0:50) · terminal BEAT 1 of `run_ml_drift_demo.py` + `mnemo.confidence` in the UI (Beat 2)
+## 02 — MEMORY, THE MECHANIC (0:15–0:50) · terminal BEAT 1 of `run_ml_drift_demo.py` + `warden.confidence` in the UI (Beat 2)
 
-> This is Mnemo. It doesn't re-derive from scratch — it remembers. A Bayesian confidence,
+> This is Warden. It doesn't re-derive from scratch — it remembers. A Bayesian confidence,
 > written directly onto the entity as a structured property. Right now: nine-tenths.
-> But high confidence alone isn't the same as trusted. Mnemo also tracks how much independent
+> But high confidence alone isn't the same as trusted. Warden also tracks how much independent
 > evidence backed that number — and it won't auto-act on a high score built from just one
 > observation. One clean read is watched, not blindly trusted. That discipline is what makes
 > what happens next safe to automate.
@@ -45,21 +45,21 @@ trim; nothing over-processed. Total target ~2:20, hard ceiling 3:00.
 
 > Watch this happen without me touching anything.
 > A real Kafka event fires — on the model's new upstream source.
-> Mnemo isn't told which model that feeds. It isn't even on its watch-list.
+> Warden isn't told which model that feeds. It isn't even on its watch-list.
 > It works that out itself, by walking the lineage graph backward.
 > It wakes. It re-reads the source. And it finds the delta against what it remembered —
 > a source that changed, under a schema that didn't.
 > Confidence drops — nine-tenths to six-tenths — below the governance line.
-> Mnemo writes that verdict onto the model itself, as a needs-review flag —
+> Warden writes that verdict onto the model itself, as a needs-review flag —
 > and it never touches the model's own description.
-> And now — a completely separate agent, that has never heard of Mnemo,
+> And now — a completely separate agent, that has never heard of Warden,
 > reads that flag straight off the graph, and refuses to recommend this model for production.
 > End to end. Live. Autonomous.
 
 ## 04 — TITLE CARD (2:10–2:20)
 
-> Mnemo. Compounding, governed memory for the data graph.
-> The reference agent suggests once. Mnemo remembers — and a stranger's agent can trust what it wrote.
+> Warden. Compounding, governed memory for the data graph.
+> The reference agent suggests once. Warden remembers — and a stranger's agent can trust what it wrote.
 
 ---
 
@@ -71,7 +71,7 @@ trim; nothing over-processed. Total target ~2:20, hard ceiling 3:00.
 
 ## OPTIONAL 06 — ARCHITECTURE (+0:00–0:15, only if it stays under 3:00) · `ARCHITECTURE.md §4` diagram
 
-> Under the hood: Mnemo reads the graph through DataHub's own APIs, updates a Bayesian confidence
+> Under the hood: Warden reads the graph through DataHub's own APIs, updates a Bayesian confidence
 > model, gates every write on governance, and writes typed structured properties back.
 
 ---

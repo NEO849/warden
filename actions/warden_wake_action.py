@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Event-driven wake for Mnemo — the real (non-polling) trigger.
+Event-driven wake for Warden — the real (non-polling) trigger.
 
 A custom DataHub Actions Action that listens on `EntityChangeEvent_v1` (the Actions
 Framework's high-level, cleanly-deserializable "platform event", delivered on the
 `PlatformEvent_v1` Kafka topic — NOT `MetadataChangeLog_*` / MCL). On a qualifying
 category (schema/tag/owner/glossary/documentation/lifecycle change), it wakes
-`MnemoAgent.check_model_inputs()` for each watched ML model instead of waiting for
+`WardenAgent.check_model_inputs()` for each watched ML model instead of waiting for
 the next poll cycle.
 
 ROOT CAUSE of the original spike failure (2026-07-24, see ../spike/action.log):
@@ -20,7 +20,7 @@ audit flagged as the culprit is a RED HERRING: it is the (working-as-designed)
 MCL pre-deserialization optimization described in kafka_event_source.py's own
 docstring, which explicitly does not affect EntityChangeEvent/PlatformEvent delivery.
 Fix: point `schema_registry_url` at the GMS-embedded registry (see
-mnemo_wake_config.yaml). Verified empirically by reading PlatformEvent_v1 directly
+warden_wake_config.yaml). Verified empirically by reading PlatformEvent_v1 directly
 with confluent-kafka + AvroDeserializer before wiring the Actions pipeline.
 
 Also empirically confirmed (see spike/_scan_pe_topic.py output):
@@ -47,9 +47,9 @@ from datahub_actions.event.event_envelope import EventEnvelope
 from datahub_actions.event.event_registry import ENTITY_CHANGE_EVENT_V1_TYPE
 from datahub_actions.pipeline.pipeline_context import PipelineContext
 
-from mnemo.agent import MnemoAgent
+from warden.agent import WardenAgent
 
-logger = logging.getLogger("mnemo.wake")
+logger = logging.getLogger("warden.wake")
 logging.basicConfig(level=logging.INFO)
 
 # EntityChangeEvent categories that should wake the memory loop.
@@ -66,7 +66,7 @@ WAKE_ON = {"TECHNICAL_SCHEMA", "DOCUMENTATION", "GLOSSARY_TERM", "TAG", "OWNER",
 #   Dataset  <--DerivedFrom-- MLFeature      (MLFeatureProperties.sources points AT the dataset)
 #   MLFeature <--Consumes--   MLModel        (MLModelProperties.mlFeatures points AT the feature)
 # i.e. querying INCOMING relationships FROM the dataset/feature URN walks the edge backwards —
-# exactly the "which model depends on this" direction mnemo/reader.py's forward walk doesn't give.
+# exactly the "which model depends on this" direction warden/reader.py's forward walk doesn't give.
 _DATASET_TO_FEATURE_REL = "DerivedFrom"
 _FEATURE_TO_MODEL_REL = "Consumes"
 _MAX_REVERSE_LINEAGE_MODELS = 25
@@ -103,7 +103,7 @@ def _reverse_lineage_models(graph: DataHubGraph, dataset_urn: str,
                         return models
         return models
     except Exception:
-        logger.exception("MNEMO WAKE: reverse-lineage resolution failed for dataset %s", dataset_urn)
+        logger.exception("WARDEN WAKE: reverse-lineage resolution failed for dataset %s", dataset_urn)
         return []
 
 
@@ -121,10 +121,10 @@ def _parse_watch_models(raw: Any) -> List[str]:
     return []
 
 
-class MnemoWakeAction(Action):
-    """Wakes MnemoAgent.check_model_inputs() for each watched model URN whenever a
+class WardenWakeAction(Action):
+    """Wakes WardenAgent.check_model_inputs() for each watched model URN whenever a
     qualifying EntityChangeEvent_v1 arrives — the event-driven counterpart to the
-    polling loop in mnemo/agent.py. Polling remains the shipped default; this is an
+    polling loop in warden/agent.py. Polling remains the shipped default; this is an
     additional, opt-in wake path (run as its own `datahub actions -c ...` process)."""
 
     @classmethod
@@ -132,13 +132,13 @@ class MnemoWakeAction(Action):
         watch_models = _parse_watch_models(config_dict.get("watch_models"))
         if not watch_models:
             logger.warning(
-                "MnemoWakeAction: no watch_models configured — the action will run "
+                "WardenWakeAction: no watch_models configured — the action will run "
                 "but will never call check_model_inputs. Set action.config.watch_models "
                 "in the pipeline YAML (list or comma-separated string of model URNs)."
             )
 
         # Prefer the graph client the Pipeline already built (ctx.graph wraps the
-        # AcrylDataHubGraph, whose .graph is the plain DataHubGraph MnemoAgent expects).
+        # AcrylDataHubGraph, whose .graph is the plain DataHubGraph WardenAgent expects).
         if ctx.graph is not None:
             graph = ctx.graph.graph
         else:
@@ -150,7 +150,7 @@ class MnemoWakeAction(Action):
         return cls(graph, watch_models)
 
     def __init__(self, graph: DataHubGraph, watch_models: List[str]) -> None:
-        self.agent = MnemoAgent(graph)
+        self.agent = WardenAgent(graph)
         self.watch_models = watch_models
 
     def act(self, event: EventEnvelope) -> None:
@@ -186,10 +186,10 @@ class MnemoWakeAction(Action):
         # from this logger ever surfaces). So the resolution source is ALSO folded into the
         # WARNING result line below (via=...), which is always visible, rather than relying on
         # this line alone. AND (below, check_model_inputs(..., via=resolution_source)) into the
-        # "schema" provenance entry itself — a DURABLE on-graph witness (mnemo.provenance) that
+        # "schema" provenance entry itself — a DURABLE on-graph witness (warden.provenance) that
         # survives a wake_service.err.log rotation/reset, not just a log line.
         logger.info(
-            "MNEMO WAKE ▶ event=%s/%s entityType=%s urn=%s (watching %d model(s), resolved via %s)",
+            "WARDEN WAKE ▶ event=%s/%s entityType=%s urn=%s (watching %d model(s), resolved via %s)",
             category, getattr(e, "operation", None), entity_type, entity_urn,
             len(target_models), resolution_source,
         )
@@ -199,7 +199,7 @@ class MnemoWakeAction(Action):
                 changed, remembered, now, belief, drift_info = self.agent.check_model_inputs(
                     model_urn, via=resolution_source)
             except Exception:
-                logger.exception("MNEMO WAKE: check_model_inputs failed for %s", model_urn)
+                logger.exception("WARDEN WAKE: check_model_inputs failed for %s", model_urn)
                 continue
 
             drift_note = (
@@ -209,15 +209,15 @@ class MnemoWakeAction(Action):
 
             if not changed:
                 logger.info(
-                    "MNEMO WAKE RESULT model=%s changed=%s confidence=%.3f governance=%s",
+                    "WARDEN WAKE RESULT model=%s changed=%s confidence=%.3f governance=%s",
                     model_urn, changed, belief.confidence, self.agent.govern(belief),
                 )
                 continue
 
             # G1 (load-bearing fix): ACTUATE the governance verdict — was log-only before. This
-            # is what makes the write real: mnemo.governance_status + the mnemo-needs-review tag
-            # + the mnemo.finding context-document all land on the graph (see
-            # mnemo/agent.py::actuate_governance), which is what console/app.py and
+            # is what makes the write real: warden.governance_status + the warden-needs-review tag
+            # + the warden.finding context-document all land on the graph (see
+            # warden/agent.py::actuate_governance), which is what console/app.py and
             # interop_demo.py actually read.
             ctx: dict = {}
             if drift_info is not None:
@@ -234,11 +234,11 @@ class MnemoWakeAction(Action):
             try:
                 result = self.agent.actuate_governance(model_urn, belief, context=ctx)
             except Exception:
-                logger.exception("MNEMO WAKE: actuate_governance failed for %s", model_urn)
+                logger.exception("WARDEN WAKE: actuate_governance failed for %s", model_urn)
                 continue
 
             logger.warning(
-                "MNEMO WAKE RESULT ⚠ model=%s changed=%s remembered=%s now=%s confidence=%.3f "
+                "WARDEN WAKE RESULT ⚠ model=%s changed=%s remembered=%s now=%s confidence=%.3f "
                 "governance=%s tag=%s(%s) finding=%r%s (triggered by %s on %s, via=%s)",
                 model_urn, changed, remembered, now, belief.confidence,
                 result["governance_status"], result["tag"], result["tag_action"], result["finding"],

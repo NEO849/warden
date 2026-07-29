@@ -1,6 +1,6 @@
-# Reproducing Mnemo
+# Reproducing Warden
 
-Mnemo is a proof of concept: a compounding-memory governance agent that reads/writes DataHub's
+Warden is a proof of concept: a compounding-memory governance agent that reads/writes DataHub's
 own metadata graph (structured properties + tags), not a hosted service. Reproducing it means
 running it against a DataHub instance you control — either the local quickstart or your own GMS.
 
@@ -15,7 +15,7 @@ running it against a DataHub instance you control — either the local quickstar
   (needs Docker, ~8 GB free RAM; see `DAY1_RUNBOOK.md` in this repo for the full bring-up +
   troubleshooting notes we hit standing this up). GMS defaults to `http://localhost:8090`.
 - Optional, for the reflection step's natural-language synthesis: a local
-  [Ollama](https://ollama.com) instance. Without it, `MnemoAgent.reflect()` falls back to a
+  [Ollama](https://ollama.com) instance. Without it, `WardenAgent.reflect()` falls back to a
   deterministic stub synthesis — no external API key is required for anything in this repo.
 
 ## Install
@@ -24,14 +24,14 @@ running it against a DataHub instance you control — either the local quickstar
 pip install .
 ```
 
-This installs the `mnemo` package and a `mnemo` console script (entry point `mnemo.cli:main`).
+This installs the `warden` package and a `warden` console script (entry point `warden.cli:main`).
 Dependencies are pinned exactly (`pyproject.toml`) to what this project was built and demoed
 against — `acryl-datahub[datahub-rest,datahub-kafka]`, `acryl-datahub-actions`, `python-dotenv`,
 `mcp`, `numpy`.
 
 Verify:
 ```
-mnemo --help
+warden --help
 ```
 
 ## Point it at your GMS
@@ -44,20 +44,20 @@ export DATAHUB_GMS_TOKEN=...                    # optional, if your GMS requires
 (Or drop both into a `.env` file in the project root — every entrypoint in this repo calls
 `load_dotenv()` first.)
 
-## Provision the mnemo.\* structured properties
+## Provision the warden.\* structured properties
 
-Mnemo persists its belief/governance state as `mnemo.*` structured properties on DataHub
-entities (`mnemo.summary`, `mnemo.confidence`, `mnemo.governance_status`, `mnemo.reflection`,
-…). These are custom property **definitions** that must exist on GMS before Mnemo can write
+Warden persists its belief/governance state as `warden.*` structured properties on DataHub
+entities (`warden.summary`, `warden.confidence`, `warden.governance_status`, `warden.reflection`,
+…). These are custom property **definitions** that must exist on GMS before Warden can write
 values for them — they are not part of stock DataHub.
 
 ```
-mnemo provision
+warden provision
 ```
 
-This is idempotent: it checks each `mnemo.*` definition against GMS and only creates what's
+This is idempotent: it checks each `warden.*` definition against GMS and only creates what's
 missing. Run it as many times as you like — a property that already exists is reported as
-skipped, never re-created or duplicated. This is what makes Mnemo reproducible against a fresh
+skipped, never re-created or duplicated. This is what makes Warden reproducible against a fresh
 DataHub instance instead of implicitly depending on properties one particular GMS happens to
 already have registered.
 
@@ -67,9 +67,9 @@ already have registered.
 make demo
 ```
 
-Runs `mnemo provision` followed by `run_live_chain_demo.py` — the deterministic, full
+Runs `warden provision` followed by `run_live_chain_demo.py` — the deterministic, full
 observe → detect → govern → reflect cycle against your live GMS (seeds a small lineage graph,
-silently re-points an upstream source, and shows Mnemo catching the drift and opening a
+silently re-points an upstream source, and shows Warden catching the drift and opening a
 governance review). See `README.md` / `DEMO_STORYBOARD.md` for what the demo narrates and why.
 
 `make install` is the plain `pip install .` above, provided as a Makefile target for symmetry.
@@ -81,7 +81,7 @@ governance review). See `README.md` / `DEMO_STORYBOARD.md` for what the demo nar
 - The pinned `acryl-datahub`/`acryl-datahub-actions` versions are what this project was actually
   built and demoed against; a newer/older DataHub CLI or GMS may still work but hasn't been
   verified here.
-- `mnemo provision` only defines the property *schemas*. It does not seed any lineage graph or
+- `warden provision` only defines the property *schemas*. It does not seed any lineage graph or
   demo data — `run_live_chain_demo.py` (via `make demo`) does that.
 - Everything above was verified with definition-writes only against a live local GMS — the demo
   chain itself is exercised separately (see `DEMO_STORYBOARD.md`), not re-run as part of this

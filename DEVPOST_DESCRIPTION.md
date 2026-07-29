@@ -1,17 +1,17 @@
-# Devpost Submission — Mnemo
+# Devpost Submission — Warden
 
 *(Drop straight into the Devpost project description fields. Lead sentence is intentionally first —
 Devpost and judges skim the opening line.)*
 
 ## One-sentence pitch
 
-Mnemo gives DataHub's graph a memory: it catches a silent upstream-source swap that every schema-diff
+Warden gives DataHub's graph a memory: it catches a silent upstream-source swap that every schema-diff
 misses — live, on DataHub's own graph — writes the verdict back as governance, and a second agent
-refuses the model by reading only what Mnemo wrote.
+refuses the model by reading only what Warden wrote.
 
 ## Tagline
 
-Compounding, governed memory for the data graph — Mnemo catches silent ML model drift under an
+Compounding, governed memory for the data graph — Warden catches silent ML model drift under an
 unchanged schema by remembering what a model's inputs used to be.
 
 **Links:** Demo video `[VIDEO]` · Live Trust Console `[LIVE-CONSOLE]` · OSS PR to `datahub-skills`
@@ -19,7 +19,7 @@ unchanged schema by remembering what a model's inputs used to be.
 
 ## Governance before AI
 
-Mnemo isn't a smarter model bolted onto DataHub — it's context infrastructure. It's the difference
+Warden isn't a smarter model bolted onto DataHub — it's context infrastructure. It's the difference
 between an agent that re-derives the state of the world from scratch on every run and one that
 *remembers*, on the graph itself, what it believed last time and updates that belief against new
 evidence. That memory is what lets a second, completely independent agent trust the graph instead of
@@ -30,7 +30,7 @@ re-guessing it — the mechanism this submission demonstrates end to end.
 In production, a model's accuracy doesn't crash — it quietly rots, one unremarkable commit at a time,
 until someone finally audits why a metric drifted last quarter. A value- or PSI-drift monitor watches
 the *data flowing through* the model — it can only alarm **after** bad data has already been ingested
-and scored; that's the symptom. Mnemo watches the *structure of what feeds the model* — a remembered
+and scored; that's the symptom. Warden watches the *structure of what feeds the model* — a remembered
 source-set compared against live lineage — targeting the root cause, so it catches the swap **before**
 the next training run ever touches it.
 
@@ -47,28 +47,28 @@ way to catch that class of drift.
 
 ## What it does
 
-Mnemo is a memory agent for DataHub that:
+Warden is a memory agent for DataHub that:
 
 1. **Remembers** each asset's prior belief — as typed structured properties written directly onto the
-   entity (`mnemo.confidence`, `mnemo.logodds`, `mnemo.mass`, `mnemo.provenance`, `mnemo.summary`) —
+   entity (`warden.confidence`, `warden.logodds`, `warden.mass`, `warden.provenance`, `warden.summary`) —
    no side database, no GMS schema rebuild. Honesty nuance: a fresh, single-observation belief can
-   read a high confidence (0.901 in our demo) without being auto-trusted — Mnemo also tracks the
+   read a high confidence (0.901 in our demo) without being auto-trusted — Warden also tracks the
    *evidence mass* behind that number and only allows a silent auto-write once enough independent
    evidence has accrued (`mass >= N_MIN`). One clean read is high-confidence but still `needs-review`,
    not `TRUSTED` — a deliberate "watched, not blindly trusted" default, not a bug in the demo.
 2. **Detects drift a schema-diff can't see**: it compares its remembered set of a model's upstream
    *source URNs* against the live lineage graph. In our demo, a feature's source is silently re-pointed
-   from `fct_users_created` to `fct_users_created_v2` — name and description unchanged — and Mnemo
+   from `fct_users_created` to `fct_users_created_v2` — name and description unchanged — and Warden
    catches the source-set delta anyway.
 3. **Updates belief with a principled Bayesian model** (`confidence_model.py`, pure stdlib): evidence
    accumulates in log-odds space, discounted by lineage distance, capped against flapping, and never
    claims absolute certainty (Cromwell's rule). When the swapped sources carry distribution profiles, a
-   **measured PSI/KS drift score** (`mnemo/drift.py`) is folded in as its own evidence term — so the
+   **measured PSI/KS drift score** (`warden/drift.py`) is folded in as its own evidence term — so the
    confidence *magnitude* is measured, not prior-only; when the profiles are quiet, the structural
-   source-delta term still fires, so Mnemo stays a **superset** of a PSI/KS drift monitor, never weaker.
-4. **Gates on governance, not vibes**: when confidence drops below threshold after a contradiction, Mnemo
-   writes a confidence-gated **`needs-review` signal** to the graph (a `mnemo.governance_status=NEEDS_REVIEW`
-   property + a `mnemo-needs-review` tag, visible in the DataHub UI) for a human to act on — and **never
+   source-delta term still fires, so Warden stays a **superset** of a PSI/KS drift monitor, never weaker.
+4. **Gates on governance, not vibes**: when confidence drops below threshold after a contradiction, Warden
+   writes a confidence-gated **`needs-review` signal** to the graph (a `warden.governance_status=NEEDS_REVIEW`
+   property + a `warden-needs-review` tag, visible in the DataHub UI) for a human to act on — and **never
    rewrites the model's own description**. (OSS DataHub has no ActionRequest/Proposal entity; that approval
    workflow is Cloud-only, so this is the honest OSS-native gate.)
 5. **Reflects across lineage** (crown feature): periodically walks a model's full upstream chain,
@@ -78,7 +78,7 @@ Mnemo is a memory agent for DataHub that:
 6. **Synthesizes insight text with a local LLM** (Ollama, no API key/card needed), falling back to a
    deterministic stub on any LLM error so the traversal/pooling/guard/write-back pipeline is fully
    testable independent of any LLM.
-7. **Learns and calibrates its own confidence** (`calibration.py`): Mnemo's confidence is a logistic
+7. **Learns and calibrates its own confidence** (`calibration.py`): Warden's confidence is a logistic
    model whose weights are its priors — it learns them by MAP from outcomes (weight-of-evidence/LLR)
    and *demonstrates* a calibration improvement with a reliability diagram and falling ECE. When a human resolves an open
    review (`resolve_review`), that outcome becomes a labeled training example — with a structural
@@ -86,7 +86,7 @@ Mnemo is a memory agent for DataHub that:
    were hand-set priors on day one become fit parameters, honestly demonstrated on a synthetic,
    fixed-seed outcome stream rather than claimed as learned from production data.
 8. **Measurably helps an LLM reason about drift**: a controlled eval (`eval/run_eval.py`, **N=21**,
-   6 of them adversarial) compares task accuracy with vs. without Mnemo's memory. The honest headline is
+   6 of them adversarial) compares task accuracy with vs. without Warden's memory. The honest headline is
    **WITH_RAW 0.52 → 0.91** (memory reduced to bare key=value facts, no conclusion words — the model has
    to reason, not parrot a label) — with a **placebo control at 0.33**, below the no-memory baseline of
    0.52, showing the lift comes from *relevant* memory and not just more tokens. `WITH` (full narrated
@@ -98,20 +98,20 @@ Mnemo is a memory agent for DataHub that:
 The reference-style `analytics-agent` pattern (request/response chat, conversation history in a local DB,
 free-text description write-back) **remembers the conversation, not the asset** — its session history lives
 in a local DB, but it keeps no per-asset memory on the graph and therefore has nothing to diff a new event against. A same-name, same-description source swap is
-structurally invisible to it. Mnemo's memory persists on the entity, survives across runs, and is
+structurally invisible to it. Warden's memory persists on the entity, survives across runs, and is
 compared against every new piece of evidence — that's the mechanism the reference pattern cannot
 replicate without becoming a different kind of system.
 
 ## How we built it
 
 - `confidence_model.py` — Bayesian log-odds belief model, pure stdlib, runs standalone.
-- `mnemo/memory.py` / `mnemo/reader.py` — persist/resume belief as DataHub structured properties;
+- `warden/memory.py` / `warden/reader.py` — persist/resume belief as DataHub structured properties;
   read schema/lineage/owners via the DataHub Python SDK graph client.
-- `mnemo/reflection.py` — lineage traversal (up to 6 hops), proximity-weighted confidence pooling,
+- `warden/reflection.py` — lineage traversal (up to 6 hops), proximity-weighted confidence pooling,
   four guard conditions, write-back onto the `MLModel` entity.
-- `mnemo/llm.py` — local Ollama hook for reflection-insight text, with stub fallback.
+- `warden/llm.py` — local Ollama hook for reflection-insight text, with stub fallback.
 - `calibration.py` — MAP logistic-regression weight-fit + temperature scaling + ECE/Brier over the same
-  `AUTHORITY` weights `confidence_model.py` already used as priors; `mnemo/agent.py::resolve_review` closes
+  `AUTHORITY` weights `confidence_model.py` already used as priors; `warden/agent.py::resolve_review` closes
   the outcome loop that feeds it.
 - `run_ml_drift_demo.py` / `run_reflection_demo.py` — end-to-end, live-against-DataHub demo scripts
   that print an explicit `[honesty]` line distinguishing verified mechanism from placeholder text.

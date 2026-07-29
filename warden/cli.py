@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
-mnemo/cli.py — `mnemo` console-script entry point.
+warden/cli.py — `warden` console-script entry point.
 
 Thin argparse wrapper around the already-existing agent/provisioning code — no new core logic.
 Connects to GMS the same way every other entrypoint in this repo does (run_agent.py,
-mnemo/mcp_server.py): DataHubGraph(DataHubGraphConfig(server=DATAHUB_GMS_URL, token=
+warden/mcp_server.py): DataHubGraph(DataHubGraphConfig(server=DATAHUB_GMS_URL, token=
 DATAHUB_GMS_TOKEN)), DATAHUB_GMS_URL defaulting to http://localhost:8090.
 
 Subcommands:
-  mnemo provision [--force]      idempotently define the mnemo.* structured properties on GMS
-                                  (mnemo/provision.py) — makes the agent reproducible against a
+  warden provision [--force]      idempotently define the warden.* structured properties on GMS
+                                  (warden/provision.py) — makes the agent reproducible against a
                                   fresh DataHub instance instead of relying on properties this
                                   VPS's GMS already happens to have registered.
-  mnemo assess <model_urn>       run MnemoAgent.check_model_inputs(model_urn) + govern() and
+  warden assess <model_urn>       run WardenAgent.check_model_inputs(model_urn) + govern() and
                                   print the drift verdict as JSON — the same read/detect/govern
-                                  logic mnemo/mcp_server.py's assess_model_drift tool exposes over
+                                  logic warden/mcp_server.py's assess_model_drift tool exposes over
                                   MCP, here exposed as a plain CLI call for scripting/CI/demo use.
 """
 import argparse
@@ -27,8 +27,8 @@ from dotenv import load_dotenv
 
 from datahub.ingestion.graph.client import DataHubGraph, DataHubGraphConfig
 
-from mnemo.agent import MnemoAgent
-from mnemo.provision import provision as provision_properties
+from warden.agent import WardenAgent
+from warden.provision import provision as provision_properties
 
 
 def _make_graph() -> DataHubGraph:
@@ -43,15 +43,15 @@ def _cmd_provision(args: argparse.Namespace) -> int:
     result = provision_properties(graph, force=args.force)
     print(json.dumps(result, indent=2))
     print(f"\n{len(result['created'])} created, {len(result['skipped'])} already defined (skipped) "
-          f"of {len(result['qualified_names'])} mnemo.* structured properties.", file=sys.stderr)
+          f"of {len(result['qualified_names'])} warden.* structured properties.", file=sys.stderr)
     return 0
 
 
 def _cmd_assess(args: argparse.Namespace) -> int:
     graph = _make_graph()
-    agent = MnemoAgent(graph)
+    agent = WardenAgent(graph)
     changed, remembered, now, belief, drift_info = agent.check_model_inputs(args.model_urn)
-    verdict = MnemoAgent.govern(belief)
+    verdict = WardenAgent.govern(belief)
     print(json.dumps({
         "model_urn": args.model_urn,
         "verdict": verdict,
@@ -67,15 +67,15 @@ def _cmd_assess(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="mnemo",
-        description="Mnemo — compounding-memory governance agent for DataHub. "
+        prog="warden",
+        description="Warden — compounding-memory governance agent for DataHub. "
                     "Connects via DATAHUB_GMS_URL (default http://localhost:8090).",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_provision = sub.add_parser(
         "provision",
-        help="idempotently define the mnemo.* structured properties on GMS",
+        help="idempotently define the warden.* structured properties on GMS",
     )
     p_provision.add_argument(
         "--force", action="store_true",

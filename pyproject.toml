@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "datahub-mnemo"
+name = "datahub-warden"
 version = "0.1.0"
-description = "Mnemo — compounding, governed memory for the DataHub metadata graph"
+description = "Warden — compounding, governed memory for the DataHub metadata graph"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.11"
@@ -18,10 +18,10 @@ dependencies = [
 ]
 
 [project.scripts]
-mnemo = "mnemo.cli:main"
+warden = "warden.cli:main"
 
 [tool.setuptools]
 py-modules = ["calibration", "confidence_model"]
 
 [tool.setuptools.packages.find]
-include = ["mnemo*"]
+include = ["warden*"]

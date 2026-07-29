@@ -1,17 +1,17 @@
-# Mnemo event-driven wake — Actions pipeline config.
+# Warden event-driven wake — Actions pipeline config.
 #
-# ROOT CAUSE FIX (see mnemo_wake_action.py docstring + ../EVENT_WAKE_STATUS.md):
+# ROOT CAUSE FIX (see warden_wake_action.py docstring + ../EVENT_WAKE_STATUS.md):
 # schema_registry_url must point at GMS's EMBEDDED schema registry
 # (SCHEMA_REGISTRY_TYPE=INTERNAL in this quickstart), not the upstream-default
 # localhost:8081 (which does not exist here and breaks ALL topics, not just MCL).
 #
 # Run as an independent process (does NOT touch/restart the DataHub stack):
-#   cd actions && ../.venv/bin/datahub actions -c mnemo_wake_config.yaml
+#   cd actions && ../.venv/bin/datahub actions -c warden_wake_config.yaml
 #
 # Trigger it: emit a tag/owner/schema change on an EXISTING entity via the SDK
 # (see run_agent.py's `seed()` pattern, or spike/_smoke_emit2.py for a template) —
-# then watch this pipeline's log for "MNEMO WAKE".
-name: mnemo_wake
+# then watch this pipeline's log for "WARDEN WAKE".
+name: warden_wake
 
 source:
   type: "kafka"
@@ -42,14 +42,14 @@ filters:
             - category: "LIFECYCLE"
 
 action:
-  type: "mnemo_wake_action:MnemoWakeAction"
+  type: "warden_wake_action:WardenWakeAction"
   config:
     # "|"-delimited string or YAML list of ML model URNs to re-check on wake.
     # NOTE: delimiter is "|", not "," — DataHub URNs contain commas themselves
     # (e.g. urn:li:mlModel:(urn:li:dataPlatform:mlflow,churn_model,PROD)).
-    # Defaults to the demo's churn_model; override via MNEMO_WATCH_MODELS for an
+    # Defaults to the demo's churn_model; override via WARDEN_WATCH_MODELS for an
     # isolated test run so you don't touch shared demo state.
-    watch_models: ${MNEMO_WATCH_MODELS:-urn:li:mlModel:(urn:li:dataPlatform:mlflow,churn_model,PROD)}
+    watch_models: ${WARDEN_WATCH_MODELS:-urn:li:mlModel:(urn:li:dataPlatform:mlflow,churn_model,PROD)}
 
 datahub:
   server: "${DATAHUB_GMS_URL:-http://localhost:8090}"

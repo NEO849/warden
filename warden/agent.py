@@ -1,5 +1,5 @@
 """
-MnemoAgent — the coherent agent that unifies the pieces the demo scripts exercised separately:
+WardenAgent — the coherent agent that unifies the pieces the demo scripts exercised separately:
 
     observe(asset, evidence)      → reconcile the asset's belief with new evidence (compounding memory)
     check_model_inputs(model)     → detect a silent upstream source-delta vs remembered inputs (drift)
@@ -7,7 +7,7 @@ MnemoAgent — the coherent agent that unifies the pieces the demo scripts exerc
     govern(belief)                → auto-write / needs-review / open-proposal, by confidence + mass
 
 One object, one belief model, one governance policy — so the project reads as an agent, not scripts.
-Read layer via DataHubReader; memory persisted on the graph via MnemoMemory; confidence via Belief.
+Read layer via DataHubReader; memory persisted on the graph via WardenMemory; confidence via Belief.
 """
 import datetime as _dt
 import json
@@ -25,16 +25,16 @@ from datahub.metadata.schema_classes import (
 
 from calibration import FEATURE_SOURCES, freeze_features
 from confidence_model import Belief
-from mnemo import drift
-from mnemo.memory import MnemoMemory
-from mnemo.reader import DataHubReader
-from mnemo.reflection import reflect, define_reflection_property
+from warden import drift
+from warden.memory import WardenMemory
+from warden.reader import DataHubReader
+from warden.reflection import reflect, define_reflection_property
 
-# The real, OSS-native "human gate" tag Mnemo puts on a model it doesn't trust yet. There is no
+# The real, OSS-native "human gate" tag Warden puts on a model it doesn't trust yet. There is no
 # ActionRequest/Proposal entity in OSS DataHub (that class of object is Cloud-only) — a tag +
-# Mnemo's own structured property is the honest OSS equivalent: a visible, queryable review flag
+# Warden's own structured property is the honest OSS equivalent: a visible, queryable review flag
 # on the graph instead of a print statement nobody can see or act on.
-NEEDS_REVIEW_TAG_URN = "urn:li:tag:mnemo-needs-review"
+NEEDS_REVIEW_TAG_URN = "urn:li:tag:warden-needs-review"
 
 
 def _short_urn(urn: str) -> str:
@@ -45,14 +45,14 @@ def _short_urn(urn: str) -> str:
     return m.group(1) if m else urn
 
 
-class MnemoAgent:
+class WardenAgent:
     def __init__(self, graph, llm=None):
         self.g = graph
         self.reader = DataHubReader(graph)
-        self.memory = MnemoMemory(graph)
+        self.memory = WardenMemory(graph)
         self.llm = llm
 
-    # --- one-time setup: ensure the mnemo.* structured properties exist (no GMS rebuild) ---
+    # --- one-time setup: ensure the warden.* structured properties exist (no GMS rebuild) ---
     def setup(self):
         self.memory.define_properties()
         define_reflection_property(self.g)
@@ -62,8 +62,8 @@ class MnemoAgent:
         """Idempotent, cosmetic-only: gives the tag entity a human-readable name/description in the
         DataHub UI. Not required for the tag ASSOCIATION in actuate_governance() to work."""
         self.g.emit(MCP(entityUrn=NEEDS_REVIEW_TAG_URN, aspect=TagPropertiesClass(
-            name="Mnemo: Needs Review",
-            description="Mnemo's confidence in this model's current inputs fell below the "
+            name="Warden: Needs Review",
+            description="Warden's confidence in this model's current inputs fell below the "
                         "governance threshold (τ=0.70) after contradicting evidence (e.g. a "
                         "silent upstream source re-point). A human should review before the model's "
                         "lineage is trusted again.",
@@ -154,10 +154,10 @@ class MnemoAgent:
         measured PSI for the caller/demo/UI.
 
         `via` (optional): how the CALLER resolved `model_urn` as a wake target — e.g.
-        actions/mnemo_wake_action.py passes "reverse-lineage" when G2's _reverse_lineage_models
+        actions/warden_wake_action.py passes "reverse-lineage" when G2's _reverse_lineage_models
         found it, or "static-watchlist" when it fell back to the configured watch list. Folded onto
         the contradicting "schema" evidence entry (Belief.update's `via`) so the resolution source
-        is DURABLE on the graph (mnemo.provenance, written by memory.save below) — on-graph proof a
+        is DURABLE on the graph (warden.provenance, written by memory.save below) — on-graph proof a
         Kafka log reset cannot erase, instead of only a log line. Callers that don't know/care about
         their own resolution path (demos, direct calls) simply omit it — no behavior change.
         """
@@ -200,17 +200,17 @@ class MnemoAgent:
 
         There is no ActionRequest/Proposal entity in the OSS DataHub SDK — real Proposals are a
         Cloud-only feature. The honest OSS-native "human gate" this method actually emits is now
-        FOUR things, all owned entirely by Mnemo:
-          (a) `mnemo.governance_status` structured property on the model  (NEEDS_REVIEW | TRUSTED)
-          (b) the GlobalTag `mnemo-needs-review` on the model, present only while NEEDS_REVIEW is
+        FOUR things, all owned entirely by Warden:
+          (a) `warden.governance_status` structured property on the model  (NEEDS_REVIEW | TRUSTED)
+          (b) the GlobalTag `warden-needs-review` on the model, present only while NEEDS_REVIEW is
               the result of a genuine contradiction (govern() == "open-proposal")
-          (c) [Block C] `mnemo.decision_features` — the calibration feature vector x, FROZEN
+          (c) [Block C] `warden.decision_features` — the calibration feature vector x, FROZEN
               *right now* from belief.provenance, whenever a review opens (status==NEEDS_REVIEW).
               This is deliberately the earliest possible freeze point ("flag time"), strictly
               before any human resolution can exist — see resolve_review()'s LEAKAGE-GUARD, which
               depends on that ordering.
-          (d) [Block D] `mnemo.finding` — a human-readable one-line context-document write-back,
-              also whenever a review opens: "Mnemo · <date>: source re-pointed X→Y; PSI=…;
+          (d) [Block D] `warden.finding` — a human-readable one-line context-document write-back,
+              also whenever a review opens: "Warden · <date>: source re-pointed X→Y; PSI=…;
               confidence 0.90→0.60; NEEDS-REVIEW". `context` (optional) supplies the drift
               specifics (old_source/new_source/psi — see check_model_inputs's drift_info) for the
               richer message; without it the finding still reports the confidence transition and
@@ -228,15 +228,15 @@ class MnemoAgent:
               flag, so nothing to freeze a decision on.
 
         HARD INVARIANT — this method NEVER writes MLModelPropertiesClass.description, or any other
-        editable/owner-authored metadata on the model. It only ever writes Mnemo's OWN mnemo.*
+        editable/owner-authored metadata on the model. It only ever writes Warden's OWN warden.*
         structured properties and its OWN tag. That is the literal mechanism behind "never silently
         trusts/rewrites the model's metadata": read MLModelPropertiesClass.description before and
         after any call to this method and it must come back byte-identical.
 
         Returns what was actually emitted (for demo/readback), e.g.:
           {"verdict": "open-proposal", "governance_status": "NEEDS_REVIEW",
-           "tag": "urn:li:tag:mnemo-needs-review", "tag_action": "added",
-           "finding": "Mnemo · 2026-07-28: confidence 0.90→0.60; NEEDS-REVIEW"}
+           "tag": "urn:li:tag:warden-needs-review", "tag_action": "added",
+           "finding": "Warden · 2026-07-28: confidence 0.90→0.60; NEEDS-REVIEW"}
         """
         verdict = self.govern(belief)
         status = "TRUSTED" if verdict == "auto-write" else "NEEDS_REVIEW"
@@ -255,7 +255,7 @@ class MnemoAgent:
             finding = self._format_finding(belief, context)
 
         # ONE combined read-modify-write for governance_status + decision_features + finding — see
-        # MnemoMemory.actuate_write's docstring for why this must not be three separate round trips.
+        # WardenMemory.actuate_write's docstring for why this must not be three separate round trips.
         self.memory.actuate_write(model_urn, status, decision_features=decision_features, finding=finding)
 
         current = self.g.get_aspect(model_urn, GlobalTagsClass)
@@ -283,13 +283,13 @@ class MnemoAgent:
         }
 
     def _format_finding(self, belief: Belief, context: dict | None) -> str:
-        """Block D: human-readable one-liner for the mnemo.finding context-document write-back —
-        'Mnemo · <date>: source re-pointed X→Y; PSI=…; confidence 0.90→0.60; NEEDS-REVIEW'.
+        """Block D: human-readable one-liner for the warden.finding context-document write-back —
+        'Warden · <date>: source re-pointed X→Y; PSI=…; confidence 0.90→0.60; NEEDS-REVIEW'.
         `context` (optional) supplies the drift specifics {"old_source", "new_source", "psi"} when
         the caller has them (see check_model_inputs's drift_info); without it, the message still
         reports the confidence transition (always available from belief.provenance) and verdict."""
         ctx = context or {}
-        parts = [f"Mnemo · {_dt.date.today().isoformat()}:"]
+        parts = [f"Warden · {_dt.date.today().isoformat()}:"]
         old_s, new_s = ctx.get("old_source"), ctx.get("new_source")
         if old_s and new_s:
             parts.append(f"source re-pointed {_short_urn(old_s)}→{_short_urn(new_s)};")
@@ -309,9 +309,9 @@ class MnemoAgent:
         on) as confirmed=True (the contradiction was real) or confirmed=False (false alarm).
 
         Writes the outcome-loop LABEL y for calibration.py:
-          mnemo.outcome = 1.0 if confirmed else 0.0
+          warden.outcome = 1.0 if confirmed else 0.0
 
-        paired with the FEATURE vector x = mnemo.decision_features that actuate_governance already
+        paired with the FEATURE vector x = warden.decision_features that actuate_governance already
         froze AT FLAG TIME — this method only ever READS that snapshot back, it never recomputes x
         from the (by-now human-updated) belief. That is the LEAKAGE-GUARD, made structural rather
         than a convention: x was captured before any human evidence existed, so it cannot contain
@@ -332,7 +332,7 @@ class MnemoAgent:
         # actuate_governance's actuate_write (see its docstring): no separate save() then
         # set_outcome() pair that could race each other's not-yet-visible write on this entity.
         self.memory.save(urn, payload, belief, event_id,
-                          extra={"mnemo.outcome": 1.0 if confirmed else 0.0})
+                          extra={"warden.outcome": 1.0 if confirmed else 0.0})
         return {
             "outcome": 1.0 if confirmed else 0.0,
             "decision_features": decision_features,

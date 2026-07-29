@@ -20,7 +20,7 @@ deser = AvroDeserializer(schema_registry_client=sr, return_record_name=True)
 
 c = Consumer({
     "bootstrap.servers": "localhost:9092",
-    "group.id": "mnemo-pe-scan-" + str(id(object())),
+    "group.id": "warden-pe-scan-" + str(id(object())),
     "auto.offset.reset": "earliest",
 })
 

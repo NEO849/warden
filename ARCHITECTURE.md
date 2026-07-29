@@ -1,6 +1,6 @@
 # DataHub Agent Hackathon — Winning Architecture (v3, working-group synthesis)
 
-> Working title: **Mnemo — Compounding, Governed Memory for the Data Graph**
+> Working title: **Warden — Compounding, Governed Memory for the Data Graph**
 > Deadline: **2026-08-10 17:00 EDT** · Judging 08-17→08-31 · Winners ~09-08 · Pool $20,500
 > v3 changelog: source-verified differentiation (analytics-agent reviewed at code level, public repo as of 2026-07-27); added the
 > **eval-harness** and **governance-native** pillars (real judges); crown feature = **lineage-wide reflection**;
@@ -45,19 +45,19 @@ no data-engineer in the field will assemble.
 
 ## 1. Concept
 
-**Mnemo** is a **memory agent** for DataHub (event-driven by design; a polling reconcile loop today). It:
+**Warden** is a **memory agent** for DataHub (event-driven by design; a polling reconcile loop today). It:
 
 1. **Wakes on events** — Actions Framework on `EntityChangeEvent_v1` (schema/doc/lineage/tag/owner).
 2. **Reads the graph** — lineage, schema, ownership, usage via the MCP server + SDK.
-3. **Reconciles memory** — loads its own prior `mnemo.*` record, treats the new event as evidence,
+3. **Reconciles memory** — loads its own prior `warden.*` record, treats the new event as evidence,
    **Bayesian-updates confidence** (`confidence_model.py`), extends the provenance chain.
-4. **Writes back** — typed structured properties (`mnemo.summary/confidence/provenance/...`), no GMS rebuild.
+4. **Writes back** — typed structured properties (`warden.summary/confidence/provenance/...`), no GMS rebuild.
 5. **Reflects** (crown feature) — on accrued importance, traverses a lineage path, gathers its own
    per-asset memories, and synthesizes a **confidence-scored insight onto the Data Product** citing the
    evidence URNs — a conclusion on no single asset.
 6. **Governs** — ranks/gates every action on tier/owner/certification signals; low-confidence or
    ungoverned → writes a confidence-gated **`needs-review` signal** (tag + status property, human gate) instead of auto-writing (OSS has no Proposal entity — Cloud-only).
-7. **Proves lift** — an eval harness reports task accuracy **WITH vs WITHOUT** Mnemo's memory context.
+7. **Proves lift** — an eval harness reports task accuracy **WITH vs WITHOUT** Warden's memory context.
 
 Auto-documentation / PII tagging are **incidental side-effects**, never the pitch (both ship already).
 
@@ -79,7 +79,7 @@ Their gospel: *"not an LLM problem, a context problem"* · agents must **improve
 | **Eval harness (with/without)** | the 50%→90% proof they cite constantly | almost no entry will measure lift |
 
 ### Source-verified differentiation (from code audit)
-| Dimension | analytics-agent (verified) | Mnemo |
+| Dimension | analytics-agent (verified) | Warden |
 |---|---|---|
 | Trigger | request/response chat | event-driven (`EntityChangeEvent_v1`) |
 | Memory | conversation history, local DB | per-asset, **on the graph** |
@@ -95,7 +95,7 @@ Their gospel: *"not an LLM problem, a context problem"* · agents must **improve
 **Target category: Production ML Agents** — thinnest field, and its stated value ("prevent expensive prod
 failure") is exactly what the OpenAI-TPM + Pinterest-EM judges reward. Best odds-adjusted play.
 
-**Demo scenario:** Mnemo watches **end-to-end ML lineage** (training data → feature → model → deployment).
+**Demo scenario:** Warden watches **end-to-end ML lineage** (training data → feature → model → deployment).
 On an upstream schema/distribution change, it wakes, reconciles its memory of the affected model's inputs,
 re-scores confidence, and **flags silent model-drift / target-leakage risk before degradation** — writing a
 governed, provenance-carrying warning back onto the model entity, surfaced via a `needs-review` signal (tag + status property).
@@ -118,7 +118,7 @@ identical, only the demo scenario + track change. Aim ML; keep the flagship as t
    lineage/schema                                      ▼ (wake)
                ▼                          ┌──────────────────────────┐
    ┌───────────────────────┐   wakes      │  Actions Framework        │
-   │  Mnemo Agent          │◄─────────────│  MnemoAction (verified)   │
+   │  Warden Agent          │◄─────────────│  WardenAction (verified)   │
    │  direct Python pipeline (Ollama)     └──────────────────────────┘
    │  1 reconcile prior memory (confidence_model.py Bayesian update)
    │  2 governance gate (tier/owner/certification)
@@ -126,12 +126,12 @@ identical, only the demo scenario + track change. Aim ML; keep the flagship as t
    └───────────┬───────────────────────────────────────────────────┘
     write typed structured properties  ·  low-conf/ungoverned → needs-review tag + status property (human gate)
                │
-        eval harness: task accuracy WITH vs WITHOUT mnemo.* context (the 50%→90% echo)
+        eval harness: task accuracy WITH vs WITHOUT warden.* context (the 50%→90% echo)
 ```
 
 ### Verified APIs (source-confirmed; see `spike/` + `scratchpad/audit_source.md`)
 - **Write memory (no rebuild):** `StructuredProperties(...).generate_mcps()` to define →
-  `DatasetPatchBuilder(urn).add_structured_property("urn:li:structuredProperty:mnemo.confidence", 0.6)` → `g.emit()`.
+  `DatasetPatchBuilder(urn).add_structured_property("urn:li:structuredProperty:warden.confidence", 0.6)` → `g.emit()`.
 - **Read:** `g.get_aspect(urn, StructuredPropertiesClass)`.
 - **Event Action:** subclass `datahub_actions.action.action.Action`; `act(event)`; `event.event` is
   `EntityChangeEvent` with `.entityUrn/.category/.operation/.modifier`. Config filters on
@@ -154,7 +154,7 @@ Python 3.11 · `acryl-datahub[datahub-rest,datahub-kafka]` · `acryl-datahub-act
 | 10 | Event Action end-to-end: event → wake → reconcile → write |
 | 11 — scenario freeze | Confirm ML-drift/target-leakage demo scenario end-to-end (or flagship fallback if C failed) |
 | 12–13 | **Lineage-wide reflection** (crown) → insight on Data Product with evidence chain |
-| 14 | **Eval harness**: accuracy WITH vs WITHOUT mnemo context; `examples/` folder (provenance chain + reflection card) |
+| 14 | **Eval harness**: accuracy WITH vs WITHOUT warden context; `examples/` folder (provenance chain + reflection card) |
 | 15 | **OSS PR** upstream (§6) |
 | 16 | Demo video (<3 min, §7) + README + Apache-2.0 license file (visible in About) |
 | 17 (08-10) | Buffer + submit before 17:00 EDT |
@@ -166,15 +166,15 @@ Python 3.11 · `acryl-datahub[datahub-rest,datahub-kafka]` · `acryl-datahub-act
 
 ## 6. OSS contribution (Bonus + Criterion-1 proof)
 Reusable core = the contribution. Ranked: (1) a DataHub **Skill** PR to `datahub-project/datahub-skills`
-that Mnemo invokes; (2) an **RFC/docs PR** proposing "agent memory + confidence via structured properties";
+that Warden invokes; (2) an **RFC/docs PR** proposing "agent memory + confidence via structured properties";
 (3) a small connector if a needed source is missing. A **merged/review-ready PR before 08-10** is the
 strongest depth proof. Do this regardless of category.
 
 ## 7. Demo strategy (<3 min — make the invisible visible)
 Open on the **second run**: asset memory already on screen (conf 0.6, provenance 1 event) → new lineage
-arrives → Mnemo wakes on the event → **confidence rises to 0.9 on screen, provenance grows to 2** → then
+arrives → Warden wakes on the event → **confidence rises to 0.9 on screen, provenance grows to 2** → then
 the **reflection card** appears on the Data Product citing 4 upstream URNs → 20-sec architecture + the
-eval bar chart (with/without) → OSS PR. Close: *"No single table says this. Mnemo concluded it by
+eval bar chart (with/without) → OSS PR. Close: *"No single table says this. Warden concluded it by
 remembering — and here's the evidence chain that made it 90% sure."*
 
 ## 8. Hard requirements (Stage-1 pass/fail)
@@ -203,13 +203,13 @@ POLLING FALLBACK GREEN ✅ (change detection via get_urns_by_filter works). **Ve
 | Piece | File | Status |
 |---|---|---|
 | Bayesian confidence | `confidence_model.py` | ✅ runs, worked example 0.6→0.9→proposal→0.96 |
-| Per-asset memory on graph | `mnemo/memory.py`, `mnemo/reader.py` | ✅ persists + resumes belief (log-odds/mass) |
+| Per-asset memory on graph | `warden/memory.py`, `warden/reader.py` | ✅ persists + resumes belief (log-odds/mass) |
 | Compounding loop | `run_reconcile.py` | ✅ GREEN — 0.6→0.9 across runs, on graph |
 | **ML-drift hero** (silent source re-point) | `run_ml_drift_demo.py` | ✅ GREEN — 0.901→0.600 → governance Proposal |
-| **Lineage-wide reflection** (crown) | `mnemo/reflection.py`, `run_reflection_demo.py` | ✅ GREEN — insight conf 0.912 citing 3 assets, on model |
-| **Unified agent** (one coherent object) | `mnemo/agent.py`, `run_agent.py` | ✅ GREEN — observe→remember→detect-drift→re-score→govern→reflect through one MnemoAgent (answers "demos are linear scripts") |
+| **Lineage-wide reflection** (crown) | `warden/reflection.py`, `run_reflection_demo.py` | ✅ GREEN — insight conf 0.912 citing 3 assets, on model |
+| **Unified agent** (one coherent object) | `warden/agent.py`, `run_agent.py` | ✅ GREEN — observe→remember→detect-drift→re-score→govern→reflect through one WardenAgent (answers "demos are linear scripts") |
 | Eval harness (with/without lift) | `eval/run_eval.py`, `examples/EVAL_NOTES.md` | ✅ BUILT + RUN (N=21 incl. 6 adversarial): WITHOUT 0.52 · WITH_RAW 0.91 · WITH 1.00 · PLACEBO 0.33. Honest framing = **controlled ablation**; headline = WITH_RAW 0.91 (reasoning from bare facts) + placebo<without, NOT the 100% |
-| LLM synthesis (insights) | `mnemo/llm.py` | ✅ wired to **local Ollama** (free, no key); stub fallback |
+| LLM synthesis (insights) | `warden/llm.py` | ✅ wired to **local Ollama** (free, no key); stub fallback |
 | Apache-2.0 LICENSE | `LICENSE` | ✅ added (Stage-1 requirement) |
 | README + Devpost writeup | `README.md`, `DEVPOST_DESCRIPTION.md` | ✅ drafted (honest status table) |
 | Demo video storyboard | `DEMO_STORYBOARD.md` | ✅ 8 shots, ~2:35, hook written |

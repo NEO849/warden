@@ -1,4 +1,4 @@
-// Mnemo Trust Console — vanilla JS, no dependencies, no CDN.
+// Warden Trust Console — vanilla JS, no dependencies, no CDN.
 // Talks only to this app's own read-only /api/* routes (never to GMS/UI directly from the browser).
 
 const $ = (sel) => document.querySelector(sel);
@@ -31,7 +31,7 @@ function renderHeartbeat() {
   el.classList.add(hbAwake ? "heartbeat--awake" : "heartbeat--stale");
   const plural = hbWatchingCount === 1 ? "" : "s";
   txt.textContent =
-    `Mnemo ${hbAwake ? "awake" : "quiet"} · last event ${liveSeconds}s ago · ` +
+    `Warden ${hbAwake ? "awake" : "quiet"} · last event ${liveSeconds}s ago · ` +
     `watching ${hbWatchingCount} PROD model${plural}`;
 }
 
@@ -53,7 +53,7 @@ async function pollHeartbeat() {
 setInterval(renderHeartbeat, 1000);
 setInterval(pollHeartbeat, 5000);
 
-// --- confidence timeseries chart (inline SVG, built from live mnemo.provenance) ---------------
+// --- confidence timeseries chart (inline SVG, built from live warden.provenance) ---------------
 
 function buildTimeseriesSVG(prov) {
   const W = 820, H = 420;

@@ -1,7 +1,7 @@
 [Unit]
-Description=DataHub quickstart stack (Mnemo demo) — deterministic, health-gated bring-up
+Description=DataHub quickstart stack (Warden demo) — deterministic, health-gated bring-up
 Documentation=file:///root/hackathons/datahub-agent/EVENT_WAKE_STATUS.md
-# Ordering anchor for the whole Mnemo demo: mnemo-wake.service and mnemo-console.service
+# Ordering anchor for the whole Warden demo: warden-wake.service and warden-console.service
 # both order After= this unit, so they only start once GMS actually answers /health (below).
 After=docker.service network-online.target
 Wants=network-online.target

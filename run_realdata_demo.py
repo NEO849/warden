@@ -5,11 +5,11 @@ REAL-DATA plumbing proof (Rigor-Judge finding #2 remediation).
 Every other run_*_demo.py in this repo reasons over AUTHOR-SEEDED synthetic assets
 (fct_users_created, churn_model, ...) created by seed_demo_graph.py / run_ml_drift_demo.py
 itself. That is fine for demonstrating the DRIFT SCENARIO (a scenario needs a controlled
-before/after), but it means no single result in this repo runs on data Mnemo's author did
+before/after), but it means no single result in this repo runs on data Warden's author did
 not construct — an "it's all synthetic" objection with no counter-evidence.
 
 This script is that counter-evidence, narrowly scoped: it proves the CORE PLUMBING
-(Reader -> Memory -> Bayesian-Confidence, persisted as mnemo.* structured properties and
+(Reader -> Memory -> Bayesian-Confidence, persisted as warden.* structured properties and
 read back from the graph) against REAL, non-author-seeded DataHub assets — the official
 DataHub "bootstrap" sample-data pack (github.com/datahub-project/datahub, the exact fixture
 every DataHub quickstart ships), ingested via `datahub datapack load bootstrap` against the
@@ -40,9 +40,9 @@ from datahub.ingestion.graph.client import DataHubGraph, DataHubGraphConfig
 from datahub.metadata.schema_classes import StructuredPropertiesClass
 
 from confidence_model import Belief
-from mnemo.memory import MnemoMemory
-from mnemo.reader import DataHubReader
-from mnemo.reflection import collect_upstream_memories
+from warden.memory import WardenMemory
+from warden.reader import DataHubReader
+from warden.reflection import collect_upstream_memories
 
 load_dotenv()
 g = DataHubGraph(DataHubGraphConfig(
@@ -50,7 +50,7 @@ g = DataHubGraph(DataHubGraphConfig(
     token=os.getenv("DATAHUB_GMS_TOKEN") or None,
 ))
 reader = DataHubReader(g)
-mem = MnemoMemory(g)
+mem = WardenMemory(g)
 
 # --- the REAL, official-DataHub-authored sample assets (bootstrap pack) ---
 TARGET = "urn:li:dataset:(urn:li:dataPlatform:hive,SampleHiveDataset,PROD)"
@@ -70,7 +70,7 @@ AUTHOR_SEEDED_URNS = {
 
 
 def _read_live_props(urn: str) -> dict:
-    """Raw mnemo.* read straight from GMS (bypasses MnemoMemory.load's Belief reconstruction) —
+    """Raw warden.* read straight from GMS (bypasses WardenMemory.load's Belief reconstruction) —
     the same style of live read-back run_ml_drift_demo.py uses as its own proof-of-write."""
     sp = g.get_aspect(urn, StructuredPropertiesClass)
     out = {}
@@ -102,7 +102,7 @@ print(f"   real 1-hop upstream (from get_context's UpstreamLineageClass read): {
 assert ctx["upstreams"] == [UPSTREAM_1HOP], f"expected 1-hop upstream {UPSTREAM_1HOP}, got {ctx['upstreams']}"
 
 upstream_via_helper = reader.get_upstreams(TARGET, max_hops=1)
-print(f"   reader.get_upstreams(TARGET) (the SDK-path helper mnemo.agent relies on): {upstream_via_helper}")
+print(f"   reader.get_upstreams(TARGET) (the SDK-path helper warden.agent relies on): {upstream_via_helper}")
 
 ctx_1hop = reader.get_context(UPSTREAM_1HOP)
 print(f"   1-hop asset's own upstream (2 hops from TARGET): {ctx_1hop['upstreams']}")
@@ -129,22 +129,22 @@ summary = json.dumps({
     "owners": ctx["owners"],
 })
 
-print("\n=== STEP 3: persist the belief onto the REAL asset as mnemo.* structured properties ===")
-mem.define_properties()  # idempotent — ensures mnemo.* is defined for entity_types incl. "dataset"
+print("\n=== STEP 3: persist the belief onto the REAL asset as warden.* structured properties ===")
+mem.define_properties()  # idempotent — ensures warden.* is defined for entity_types incl. "dataset"
 mem.save(TARGET, summary, belief, "real_data_ingest")
 print(f"   mem.save({TARGET!r}, ...) — MCP emitted.")
 
 print("\n=== STEP 4: READ-BACK PROOF — resumed belief + raw live GMS read must both show the write ===")
 belief_resumed, summary_resumed = mem.load(TARGET)
-print(f"   MnemoMemory.load() resumed Belief: confidence={belief_resumed.confidence:.3f} "
+print(f"   WardenMemory.load() resumed Belief: confidence={belief_resumed.confidence:.3f} "
       f"mass={belief_resumed.mass:.3f} (matches what was just saved: "
       f"{abs(belief_resumed.confidence - belief.confidence) < 1e-6})")
 live_props = _read_live_props(TARGET)
-print(f"   [read-back from GMS] mnemo.confidence={live_props.get('mnemo.confidence')}  "
-      f"mnemo.logodds={live_props.get('mnemo.logodds')}  mnemo.mass={live_props.get('mnemo.mass')}")
-print(f"   [read-back from GMS] mnemo.summary={live_props.get('mnemo.summary')}")
+print(f"   [read-back from GMS] warden.confidence={live_props.get('warden.confidence')}  "
+      f"warden.logodds={live_props.get('warden.logodds')}  warden.mass={live_props.get('warden.mass')}")
+print(f"   [read-back from GMS] warden.summary={live_props.get('warden.summary')}")
 readback_ok = (
-    live_props.get("mnemo.confidence") == round(belief.confidence, 3)
+    live_props.get("warden.confidence") == round(belief.confidence, 3)
     and summary_resumed == summary
 )
 print(f"   read-back matches write: {readback_ok}")
@@ -167,7 +167,7 @@ print("   -> reflection correctly does not fire here: the real bootstrap fixture
 
 print("\n=== STEP 6: real PSI check ===")
 # psi()/psi_to_quality() need a DatasetFieldProfileClass HISTOGRAM pair (binned numeric heights)
-# on two real assets — the exact shape mnemo/drift.py and seed_demo_graph.py's seed_profiles()
+# on two real assets — the exact shape warden/drift.py and seed_demo_graph.py's seed_profiles()
 # construct synthetically. Checked live against GMS below, not assumed from a static file scan
 # (a first pass wrongly concluded "no profiles at all" by only grep'ing the snapshot-shaped MCEs
 # and missing the pack's flat timeseries-MCP entries — corrected here to query GMS directly):
@@ -200,13 +200,13 @@ if target_profiles:
 print(f"   fieldProfiles carrying a numeric histogram: TARGET={len(target_histograms)} "
       f"UPSTREAM_1HOP={len(up1_histograms)}")
 if target_histograms and up1_histograms:
-    from mnemo.drift import psi
+    from warden.drift import psi
     print("   (would compute real PSI here — but this branch did not fire, see below)")
 else:
     print("   -> NO real PSI computed. DataHub's official bootstrap pack DOES profile "
           "SampleHiveDataset (rowCount/\n      uniqueCount/nullCount are real, live-read above), "
           "but only as CATEGORICAL field stats (sampleValues) —\n      no bin-height histogram, "
-          "which is the one shape mnemo/drift.py::psi() operates on. A real PSI needs a\n      "
+          "which is the one shape warden/drift.py::psi() operates on. A real PSI needs a\n      "
           "profiler run (dbt/Great Expectations/Deequ) that emits DatasetFieldProfile.histogram "
           "over real numeric\n      data — out of scope for a static sample-data pack. "
           "run_ml_drift_demo.py's PSI path stays on the\n      author-seeded histograms in "
@@ -221,7 +221,7 @@ print(
     "          is DataHub's own official bootstrap sample-data fixture — not author-seeded by "
     "this repo — and the\n"
     "          schema/lineage/owners read in STEP 1 come straight off GMS, live. The belief in "
-    "STEP 2, the mnemo.*\n"
+    "STEP 2, the warden.*\n"
     "          write in STEP 3, and the read-back in STEP 4 are the REAL, unedited Reader -> "
     "Memory -> Bayesian-\n"
     "          Confidence plumbing running end-to-end on that real asset — this is the load-"

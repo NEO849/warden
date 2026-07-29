@@ -3,18 +3,18 @@
 Measured-drift demo (Block 1): PSI/KS as a REAL Bayes evidence term, not just priors.
 
 run_ml_drift_demo.py (unchanged, still the live-verified 0.901→0.600 hero) proves the STRUCTURAL
-half of Mnemo's honesty claim: a source-delta a schema-diff cannot see. This script proves the
+half of Warden's honesty claim: a source-delta a schema-diff cannot see. This script proves the
 MEASURED half — that when DataHub also holds field-profile histograms for the old and new source,
-mnemo/drift.py's PSI feeds in as a second, independent drift_stat evidence term (see
-mnemo/agent.py::check_model_inputs / _measured_drift), on top of — never instead of — the structural
+warden/drift.py's PSI feeds in as a second, independent drift_stat evidence term (see
+warden/agent.py::check_model_inputs / _measured_drift), on top of — never instead of — the structural
 term.
 
 Two scenarios, same structural swap (a feature's source re-pointed under an unchanged name):
 
   (a) KILL-SHOT "PSI schweigt": new profile ≈ old profile (PSI≈0.02, same as the seeded
       run_ml_drift_demo.py-style pair — see seed_demo_graph.py::seed_profiles). A PSI/KS-only
-      monitor would stay GREEN here. Mnemo's STRUCTURAL source-delta term still fires on its own —
-      proof that Mnemo is a SUPERSET of a pure statistical-drift monitor, not a subset.
+      monitor would stay GREEN here. Warden's STRUCTURAL source-delta term still fires on its own —
+      proof that Warden is a SUPERSET of a pure statistical-drift monitor, not a subset.
 
   (b) "measured drift": the new source's distribution has genuinely moved (PSI>0.25). Confidence
       now falls HARDER than in scenario (a), because the structural signal is independently
@@ -45,15 +45,15 @@ from datahub.metadata.schema_classes import (
 )
 
 from confidence_model import Belief
-from mnemo import drift
-from mnemo.agent import MnemoAgent
+from warden import drift
+from warden.agent import WardenAgent
 
 load_dotenv()
 g = DataHubGraph(DataHubGraphConfig(
     server=os.getenv("DATAHUB_GMS_URL", "http://localhost:8090"),
     token=os.getenv("DATAHUB_GMS_TOKEN") or None,
 ))
-agent = MnemoAgent(g)
+agent = WardenAgent(g)
 
 BOUNDARIES = [float(b) for b in range(0, 8)]
 BOUNDARY_LABELS = [str(b) for b in BOUNDARIES]
@@ -70,7 +70,7 @@ def _emit_profile(urn, field_path, seed_val, mean, stdev, n=2000):
 
 
 def run_scenario(label, tag, old_field, new_field, old_stat, new_stat, expect_significant):
-    """One end-to-end MnemoAgent cycle: seed profiles -> healthy baseline -> silent re-point ->
+    """One end-to-end WardenAgent cycle: seed profiles -> healthy baseline -> silent re-point ->
     check_model_inputs -> report structural + measured (drift_stat) evidence."""
     old_ds = make_dataset_urn("hive", f"{tag}_old_src", "PROD")
     new_ds = make_dataset_urn("hive", f"{tag}_new_src", "PROD")
@@ -110,17 +110,17 @@ def run_scenario(label, tag, old_field, new_field, old_stat, new_stat, expect_si
           f"  (Δ={belief2.confidence - baseline.confidence:+.3f})  governance={agent.govern(belief2)}")
 
     gov_result = agent.actuate_governance(model, belief2)
-    print(f"   governance actuation: wrote mnemo.governance_status={gov_result['governance_status']}"
+    print(f"   governance actuation: wrote warden.governance_status={gov_result['governance_status']}"
           f"  tag={gov_result['tag']} ({gov_result['tag_action']}) on {model}")
     sp_after = g.get_aspect(model, StructuredPropertiesClass)
     gov_status_live = None
     for p in (sp_after.properties if sp_after else []):
-        if p.propertyUrn.endswith("mnemo.governance_status"):
+        if p.propertyUrn.endswith("warden.governance_status"):
             gov_status_live = p.values[0] if p.values else None
     tags_after = g.get_aspect(model, GlobalTagsClass)
     tag_urns_live = [t.tag for t in tags_after.tags] if tags_after and tags_after.tags else []
     description_after = g.get_aspect(model, MLModelPropertiesClass).description
-    print(f"   [read-back from GMS] mnemo.governance_status={gov_status_live!r}  globalTags={tag_urns_live}"
+    print(f"   [read-back from GMS] warden.governance_status={gov_status_live!r}  globalTags={tag_urns_live}"
           f"  description unchanged={description_before == description_after}")
 
     psi_val = drift_info["psi"] if drift_info else None
@@ -130,7 +130,7 @@ def run_scenario(label, tag, old_field, new_field, old_stat, new_stat, expect_si
     return belief2.confidence, psi_val, ok
 
 
-print("Mnemo Block 1 — measured drift as a real Bayes evidence term (PSI/KS alongside the structural delta)")
+print("Warden Block 1 — measured drift as a real Bayes evidence term (PSI/KS alongside the structural delta)")
 
 conf_a, psi_a, ok_a = run_scenario(
     "(a) KILL-SHOT: PSI stays quiet", "kill_shot",
@@ -152,7 +152,7 @@ print(f"   (b) measured drift: PSI={psi_b:.4f}  confidence→{conf_b:.3f}")
 harder = conf_b < conf_a
 print(f"   scenario (b) confidence fell {'HARDER' if harder else 'NOT harder'} than (a)"
       f"  ({conf_a:.3f} vs {conf_b:.3f})")
-print("   [honesty] Mnemo stays a SUPERSET: (a) shows the structural term alone catches a swap PSI/KS")
+print("   [honesty] Warden stays a SUPERSET: (a) shows the structural term alone catches a swap PSI/KS")
 print("             cannot see; (b) shows that where a real profile pair exists AND genuinely diverges,")
 print("             the confidence MAGNITUDE is now partly MEASURED (drift_stat), not prior-only.")
 

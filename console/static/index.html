@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mnemo — Trust Console</title>
+<title>Warden — Trust Console</title>
 <style>
 :root{
   --ground:#0a0c0e; --panel:#101418; --panel-2:#0d1114; --hair:#1b2127;
@@ -173,7 +173,7 @@ footer{margin-top:34px; font-family:var(--mono); font-size:10.5px; color:var(--i
 <body>
 <div class="wrap">
   <header>
-    <div class="brand"><b>MNEMO</b><span class="sep">/</span>Trust Console</div>
+    <div class="brand"><b>WARDEN</b><span class="sep">/</span>Trust Console</div>
     <div class="live" id="liveBadge"><span class="dot"></span><span id="liveText">connecting…</span></div>
     <div class="spacer"></div>
     <div class="hb" id="hb">—</div>
@@ -215,7 +215,7 @@ footer{margin-top:34px; font-family:var(--mono); font-size:10.5px; color:var(--i
     </section>
   </div>
 
-  <footer>Live · reads <b>mnemo.*</b> structured properties + <b>mnemo-needs-review</b> tag off the real DataHub graph via <code>/api/models</code>, <code>/api/model/&lt;urn&gt;</code>, <code>/api/heartbeat</code>. Read-only — no mutation endpoint exists in this app.</footer>
+  <footer>Live · reads <b>warden.*</b> structured properties + <b>warden-needs-review</b> tag off the real DataHub graph via <code>/api/models</code>, <code>/api/model/&lt;urn&gt;</code>, <code>/api/heartbeat</code>. Read-only — no mutation endpoint exists in this app.</footer>
 </div>
 
 <script>
@@ -303,7 +303,7 @@ function renderList(){
   list.innerHTML = "";
   tblBody.innerHTML = "";
   if (!sorted.length){
-    list.innerHTML = `<p class="empty">No models observed yet — Mnemo has not written mnemo.confidence to any mlModel.</p>`;
+    list.innerHTML = `<p class="empty">No models observed yet — Warden has not written warden.confidence to any mlModel.</p>`;
     return;
   }
   sorted.forEach(m=>{
@@ -363,7 +363,7 @@ function renderDetail(d){
   const flagged = d.governance_status === "NEEDS_REVIEW";
 
   const stamp = flagged
-    ? `<div class="stamp"><span class="big">Needs Review</span><span class="meta">written on the graph as <b>mnemo.governance_status</b><br>a human must clear it</span></div>`
+    ? `<div class="stamp"><span class="big">Needs Review</span><span class="meta">written on the graph as <b>warden.governance_status</b><br>a human must clear it</span></div>`
     : `<div class="stamp ${st === "watch" ? "watch" : "trusted"}"><span class="big">${st === "watch" ? "Watched" : "Trusted"}</span><span class="meta">above the gate<br>consumable</span></div>`;
 
   const findingLine = (d.summary && d.summary.desc) ? esc(d.summary.desc) : "No summary recorded for this entity.";
@@ -373,7 +373,7 @@ function renderDetail(d){
     <div class="sub">${esc(d.urn)}</div>
     <p style="margin:0;color:var(--ink-2);font-size:13.5px">${findingLine}</p>
 
-    <div class="block-label">Reverse lineage — how Mnemo found it</div>
+    <div class="block-label">Reverse lineage — how Warden found it</div>
     <div class="spine" id="spine"></div>
     ${renderDriftNote(d)}
 
@@ -488,7 +488,7 @@ function renderTrail(d){
   const note = d.governance_status === "NEEDS_REVIEW"
     ? `<li class="step note"><span class="mk" aria-hidden="true">i</span>
         <div class="t">Verdict written on the graph</div>
-        <div class="d"><b>mnemo.governance_status = NEEDS_REVIEW</b>${d.needs_review_tag ? " + <b>mnemo-needs-review</b> tag" : ""} — description untouched</div></li>`
+        <div class="d"><b>warden.governance_status = NEEDS_REVIEW</b>${d.needs_review_tag ? " + <b>warden-needs-review</b> tag" : ""} — description untouched</div></li>`
     : "";
   return `<ul class="trail">${steps}${note}</ul>`;
 }

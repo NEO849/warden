@@ -1,13 +1,13 @@
 """
-mnemo/drift.py — measured statistical drift: PSI (binned) and KS (raw-sample) distribution-shift scores.
+warden/drift.py — measured statistical drift: PSI (binned) and KS (raw-sample) distribution-shift scores.
 
-Turns Mnemo's confidence MAGNITUDE from prior-only into something partly MEASURED: when DataHub
+Turns Warden's confidence MAGNITUDE from prior-only into something partly MEASURED: when DataHub
 holds a DatasetFieldProfileClass histogram for both an old and a new source, this module scores how
-far the two distributions moved, and mnemo/agent.py folds that score in as a second, independent
+far the two distributions moved, and warden/agent.py folds that score in as a second, independent
 Bayes evidence term ("drift_stat") ALONGSIDE the existing structural source-delta term.
 
-Mnemo stays a SUPERSET, never a subset, of a pure PSI/KS monitor: the drift_stat term only fires
-when a profile pair exists for both the old and new source (see check_model_inputs in mnemo/agent.py
+Warden stays a SUPERSET, never a subset, of a pure PSI/KS monitor: the drift_stat term only fires
+when a profile pair exists for both the old and new source (see check_model_inputs in warden/agent.py
 for the profile gate). Where no profile exists, or where PSI/KS itself stays quiet because the new
 distribution coincidentally looks like the old one under a semantically different column (the
 run_ml_drift_demo.py hero case: signup_ts → ingest_ts, same shape, different meaning), the existing

@@ -1,9 +1,9 @@
 {
-  "mnemo.summary": "{\"desc\": \"DRIFT: feature source re-pointed under a stable name\", \"input_sources\": [\"urn:li:dataset:(urn:li:dataPlatform:hive,fct_users_created_v2,PROD)\"]}",
-  "mnemo.confidence": 0.6,
-  "mnemo.logodds": 0.405,
-  "mnemo.mass": 2.225,
-  "mnemo.provenance": "[{\"source\": \"lineage\", \"event\": \"init1\", \"hops\": 2, \"delta\": 0.405, \"c_after\": 0.6}, {\"source\": \"lineage\", \"event\": \"init2\", \"hops\": 0, \"delta\": 1.8, \"c_after\": 0.901}, {\"source\": \"schema\", \"event\": \"drift\", \"hops\": 0, \"delta\": -1.8, \"c_after\": 0.6}]",
-  "mnemo.lastEvent": "drift",
-  "mnemo.agentVersion": "mnemo-0.1"
+  "warden.summary": "{\"desc\": \"DRIFT: feature source re-pointed under a stable name\", \"input_sources\": [\"urn:li:dataset:(urn:li:dataPlatform:hive,fct_users_created_v2,PROD)\"]}",
+  "warden.confidence": 0.6,
+  "warden.logodds": 0.405,
+  "warden.mass": 2.225,
+  "warden.provenance": "[{\"source\": \"lineage\", \"event\": \"init1\", \"hops\": 2, \"delta\": 0.405, \"c_after\": 0.6}, {\"source\": \"lineage\", \"event\": \"init2\", \"hops\": 0, \"delta\": 1.8, \"c_after\": 0.901}, {\"source\": \"schema\", \"event\": \"drift\", \"hops\": 0, \"delta\": -1.8, \"c_after\": 0.6}]",
+  "warden.lastEvent": "drift",
+  "warden.agentVersion": "warden-0.1"
 }

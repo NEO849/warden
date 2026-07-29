@@ -1,6 +1,6 @@
-# Mnemo Action pipeline — SOURCE-VERIFIED against datahub-actions examples
-# (hello_world.yaml, doc_propagation_action.yaml). Run: datahub actions -c mnemo_action_config.yaml
-name: mnemo
+# Warden Action pipeline — SOURCE-VERIFIED against datahub-actions examples
+# (hello_world.yaml, doc_propagation_action.yaml). Run: datahub actions -c warden_action_config.yaml
+name: warden
 
 # Source = DataHub's metadata event stream (Kafka; shipped by quickstart).
 source:
@@ -27,7 +27,7 @@ filters:
             - category: "OWNER"
 
 action:
-  type: "mnemo_action:MnemoAction"
+  type: "warden_action:WardenAction"
 
 datahub:
   server: "http://localhost:8080"

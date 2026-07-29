@@ -1,16 +1,16 @@
 # Event-driven wake — status: LIVE-VERIFIED ✅
 
-Block 7 deliverable. Polling (`mnemo/agent.py` + `run_ml_drift_demo.py`) remains the
+Block 7 deliverable. Polling (`warden/agent.py` + `run_ml_drift_demo.py`) remains the
 shipped default and is **unchanged**. Event-driven wake is an additional, opt-in
-capability: run `datahub actions -c actions/mnemo_wake_config.yaml` as its own process
+capability: run `datahub actions -c actions/warden_wake_config.yaml` as its own process
 alongside the shipped demo.
 
 ## Root cause of the original spike failure
 
-The spike (`spike/mnemo_action_config.yaml`, `spike/action.log`) logged:
+The spike (`spike/warden_action_config.yaml`, `spike/action.log`) logged:
 
 ```
-KafkaEventSource [mnemo]: pre-deserialization filter active — all MCL messages will be
+KafkaEventSource [warden]: pre-deserialization filter active — all MCL messages will be
 dropped before avrogen deserialization (MetadataChangeLogEvent_v1 is not present in the
 EventTypeFilter)
 ```
@@ -37,7 +37,7 @@ single message is ever decoded. That's why the spike never printed a wake, regar
 category filter correctness.
 
 Fix: point `schema_registry_url` at the GMS-embedded registry
-(`actions/mnemo_wake_config.yaml`).
+(`actions/warden_wake_config.yaml`).
 
 ## Empirical category verification (before wiring the pipeline)
 
@@ -56,31 +56,31 @@ first-ever aspect (i.e. the entity didn't exist before) fires `LIFECYCLE/CREATE`
 **not** the `TAG` category — the category-specific hook appears to require a prior
 version to diff against. Wake triggers must target entities that already exist in the
 graph. This cost one failed round-trip during verification (see below) and is now
-documented in `actions/mnemo_wake_action.py`'s docstring.
+documented in `actions/warden_wake_action.py`'s docstring.
 
 ## What was built
 
-- `actions/mnemo_wake_action.py` — `MnemoWakeAction`, a DataHub Actions `Action`. On a
+- `actions/warden_wake_action.py` — `WardenWakeAction`, a DataHub Actions `Action`. On a
   qualifying `EntityChangeEvent_v1` (`TAG`/`TECHNICAL_SCHEMA`/`DOCUMENTATION`/
-  `GLOSSARY_TERM`/`OWNER`/`LIFECYCLE`), calls `MnemoAgent.check_model_inputs(model_urn)`
+  `GLOSSARY_TERM`/`OWNER`/`LIFECYCLE`), calls `WardenAgent.check_model_inputs(model_urn)`
   for each configured watched model and logs the result (changed / confidence /
   governance / measured drift). Reuses the Pipeline's own `DataHubGraph` client
   (`ctx.graph.graph`) — no separate connection.
-- `actions/mnemo_wake_config.yaml` — Kafka source with the corrected
+- `actions/warden_wake_config.yaml` — Kafka source with the corrected
   `schema_registry_url`, `pe`-only topic route (no `mcl` route — we don't need MCL at
   all here), the category filter, and `watch_models` (defaults to the shipped demo's
-  `churn_model`, overridable via `MNEMO_WATCH_MODELS` env var, `|`-delimited — **not**
+  `churn_model`, overridable via `WARDEN_WATCH_MODELS` env var, `|`-delimited — **not**
   comma-delimited, see bug below).
 - `spike/_scan_pe_topic.py` — kept as a standalone, reusable Kafka-level diagnostic
   (bypasses the Actions framework entirely) for future "is GMS even emitting the event I
   expect" questions.
 - `actions/_verify_seed.py`, `_verify_trigger.py`, `_verify_trigger2.py` — the isolated
   live-verification scripts described below (safe to re-run; touch only the
-  `mnemo_wake_verify_*` namespace).
+  `warden_wake_verify_*` namespace).
 
 ## A real bug found and fixed during verification
 
-`MnemoWakeAction`'s config initially split the `watch_models` string on `,`. DataHub URNs
+`WardenWakeAction`'s config initially split the `watch_models` string on `,`. DataHub URNs
 themselves contain commas as key-field separators
 (`urn:li:mlModel:(urn:li:dataPlatform:mlflow,churn_model,PROD)`), so splitting on `,`
 truncated the URN at the first comma and every `check_model_inputs()` call 500'd against
@@ -90,14 +90,14 @@ similar comma-splitting exists elsewhere in the codebase.
 
 ## LIVE VERIFY — proof
 
-1. Seeded an **isolated** lineage (`mnemo_wake_verify_*` namespace — never touches the
+1. Seeded an **isolated** lineage (`warden_wake_verify_*` namespace — never touches the
    shared demo entities `fct_users_created`/`churn_model` that another parallel block is
-   using for demo capture) and established Mnemo's baseline memory
+   using for demo capture) and established Warden's baseline memory
    (`actions/_verify_seed.py`): confidence `0.901`, remembered input =
-   `mnemo_wake_verify_source`.
+   `warden_wake_verify_source`.
 2. Started the Actions consumer as its **own process** (not the DataHub stack):
-   `MNEMO_WATCH_MODELS="urn:li:mlModel:(urn:li:dataPlatform:mlflow,mnemo_wake_verify_model,PROD)" datahub actions -c actions/mnemo_wake_config.yaml`
-3. Silently re-pointed the feature's source (`mnemo_wake_verify_source` →
+   `WARDEN_WATCH_MODELS="urn:li:mlModel:(urn:li:dataPlatform:mlflow,warden_wake_verify_model,PROD)" datahub actions -c actions/warden_wake_config.yaml`
+3. Silently re-pointed the feature's source (`warden_wake_verify_source` →
    `_source_v2`, same name/description — the exact "harmless-looking" drift the
    ML-track demo is built around) **and** fired the Kafka-visible trigger: added a tag
    to the model (`actions/_verify_trigger.py` / `_verify_trigger2.py`).
@@ -105,7 +105,7 @@ similar comma-splitting exists elsewhere in the codebase.
    `actions/verify_run_SUCCESS.log`):
 
 ```
-[2026-07-27 18:03:54,831] WARNING  {mnemo.wake:135} - MNEMO WAKE RESULT ⚠ model=urn:li:mlModel:(urn:li:dataPlatform:mlflow,mnemo_wake_verify_model,PROD) changed=True remembered=['urn:li:dataset:(urn:li:dataPlatform:hive,mnemo_wake_verify_source,PROD)'] now=['urn:li:dataset:(urn:li:dataPlatform:hive,mnemo_wake_verify_source_v2,PROD)'] confidence=0.600 governance=open-proposal (triggered by TAG on urn:li:mlModel:(urn:li:dataPlatform:mlflow,mnemo_wake_verify_model,PROD))
+[2026-07-27 18:03:54,831] WARNING  {warden.wake:135} - WARDEN WAKE RESULT ⚠ model=urn:li:mlModel:(urn:li:dataPlatform:mlflow,warden_wake_verify_model,PROD) changed=True remembered=['urn:li:dataset:(urn:li:dataPlatform:hive,warden_wake_verify_source,PROD)'] now=['urn:li:dataset:(urn:li:dataPlatform:hive,warden_wake_verify_source_v2,PROD)'] confidence=0.600 governance=open-proposal (triggered by TAG on urn:li:mlModel:(urn:li:dataPlatform:mlflow,warden_wake_verify_model,PROD))
 ```
 
 Confidence dropped `0.901 → 0.600` (the same magnitude as the shipped polling demo),
@@ -119,12 +119,12 @@ Kafka `EntityChangeEvent_v1`, ~30s end-to-end from tag-write to logged result.
   independent process (PIDs, never `docker restart`/`quickstart --stop`); `docker ps`
   shows all DataHub containers with unchanged "Up 3 days" uptime throughout.
 - **Shared demo entities untouched** for the actual wake proof — all seed/trigger
-  activity is scoped to the `mnemo_wake_verify_*` namespace. (One accidental early tag
+  activity is scoped to the `warden_wake_verify_*` namespace. (One accidental early tag
   write landed on the shared `churn_model` during root-cause diagnosis before the
   isolated namespace was adopted; it was reverted immediately —
-  `git status`/`git diff` on `mnemo/`, `run_ml_drift_demo.py`, `run_agent.py`,
+  `git status`/`git diff` on `warden/`, `run_ml_drift_demo.py`, `run_agent.py`,
   `demo_e2e.py`, `examples/`, `eval/` show no modifications from this block.)
-- `run_ml_drift_demo.py`, `mnemo/agent.py`: **not modified** — polling remains the
+- `run_ml_drift_demo.py`, `warden/agent.py`: **not modified** — polling remains the
   shipped default, event-wake is additive and opt-in.
 
 ## Known rough edges (honest, not hidden)
@@ -149,7 +149,7 @@ Kafka `EntityChangeEvent_v1`, ~30s end-to-end from tag-write to logged result.
 
 The verify log quoted above (`actions/verify_run_SUCCESS.log`, 2026-07-27 18:03) is the **original
 one-shot proof** of the wake mechanism. Since then the consumer runs as a **registered systemd
-service** — `deploy/mnemo-wake.service` (`systemctl status mnemo-wake` → `active (running)`,
+service** — `deploy/warden-wake.service` (`systemctl status warden-wake` → `active (running)`,
 `enabled`), so "wakes on event" is not only verified but continuously live. Its current log is
 `actions/wake_service.log` / `actions/wake_service.err.log` (not `verify_run_SUCCESS.log`, which is a
 frozen snapshot — don't cite it as the live instance).
@@ -157,7 +157,7 @@ frozen snapshot — don't cite it as the live instance).
 Two honest notes about the service wrapper (not the mechanism, which was already proven):
 
 - The very first systemd start (2026-07-28 11:23) **crashed** (`exit 1`): as a bare-root-cwd service the
-  action's bare module name `mnemo_wake_action` wasn't importable, and the CLI's telemetry call stalled
+  action's bare module name `warden_wake_action` wasn't importable, and the CLI's telemetry call stalled
   startup in `SYN-SENT`. Fixed with `PYTHONPATH=actions:.` and `DATAHUB_TELEMETRY_ENABLED=false`; the
   11:56 start came up clean (Kafka `ESTAB`, "pipeline now running").
 - The events it reacts to in the demo are **self-seeded** (the demo entities), i.e. this proves the

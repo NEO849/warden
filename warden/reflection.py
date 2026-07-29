@@ -32,15 +32,15 @@ K_MIN = 3               # need at least this many upstream memories to reflect
 # K_MIN=3 is the primary gate; this is the secondary "is the pooled evidence substantial" check.
 # TODO: derive from a target false-reflection rate rather than a hand-set constant.
 MIN_REFLECT_MASS = 0.5
-AGENT_VERSION = "mnemo-0.1"
-REFLECTION_PROP = "urn:li:structuredProperty:mnemo.reflection"
+AGENT_VERSION = "warden-0.1"
+REFLECTION_PROP = "urn:li:structuredProperty:warden.reflection"
 
 
 def define_reflection_property(g) -> None:
-    """Define mnemo.reflection on the model entity (no GMS rebuild — verified path)."""
+    """Define warden.reflection on the model entity (no GMS rebuild — verified path)."""
     from datahub.api.entities.structuredproperties.structuredproperties import StructuredProperties
-    sp = StructuredProperties(id="mnemo.reflection", qualified_name="mnemo.reflection",
-                             display_name="Mnemo Reflection", type="string",
+    sp = StructuredProperties(id="warden.reflection", qualified_name="warden.reflection",
+                             display_name="Warden Reflection", type="string",
                              cardinality="SINGLE", entity_types=["mlModel", "dataset"])
     for mcp in sp.generate_mcps():
         g.emit(mcp)
@@ -56,7 +56,7 @@ def _clamp(x, lo, hi):
 
 
 def collect_upstream_memories(g, memory, model_urn: str) -> list:
-    """Walk model → features → source datasets → upstream datasets, gather mnemo memories."""
+    """Walk model → features → source datasets → upstream datasets, gather warden memories."""
     out, visited = [], set()
 
     def visit(urn, hops):

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""VERIFY step 1/3 — seed an ISOLATED test lineage (mnemo_wake_verify namespace, never
-touches the shared demo entities fct_users_created/churn_model) and establish Mnemo's
+"""VERIFY step 1/3 — seed an ISOLATED test lineage (warden_wake_verify namespace, never
+touches the shared demo entities fct_users_created/churn_model) and establish Warden's
 baseline memory of the model's healthy input set, exactly like run_agent.py beat 1-2."""
 import json
 import os
@@ -20,18 +20,18 @@ from datahub.metadata.schema_classes import (
 )
 
 from confidence_model import Belief
-from mnemo.agent import MnemoAgent
+from warden.agent import WardenAgent
 
 g = DataHubGraph(DataHubGraphConfig(
     server=os.getenv("DATAHUB_GMS_URL", "http://localhost:8090"),
     token=os.getenv("DATAHUB_GMS_TOKEN") or None,
 ))
-agent = MnemoAgent(g)
+agent = WardenAgent(g)
 
-WAKE_DS = make_dataset_urn("hive", "mnemo_wake_verify_source", "PROD")
-WAKE_FEAT = "urn:li:mlFeature:(mnemo_wake_verify,test_feature)"
-WAKE_FT = "urn:li:mlFeatureTable:(urn:li:dataPlatform:feast,mnemo_wake_verify)"
-WAKE_MODEL = "urn:li:mlModel:(urn:li:dataPlatform:mlflow,mnemo_wake_verify_model,PROD)"
+WAKE_DS = make_dataset_urn("hive", "warden_wake_verify_source", "PROD")
+WAKE_FEAT = "urn:li:mlFeature:(warden_wake_verify,test_feature)"
+WAKE_FT = "urn:li:mlFeatureTable:(urn:li:dataPlatform:feast,warden_wake_verify)"
+WAKE_MODEL = "urn:li:mlModel:(urn:li:dataPlatform:mlflow,warden_wake_verify_model,PROD)"
 
 print("1. seed isolated lineage: dataset -> feature -> model")
 agent.setup()

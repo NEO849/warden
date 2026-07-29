@@ -2,7 +2,7 @@
 """VERIFY step 2/3 — the "silent upstream re-point" (same story as run_ml_drift_demo.py
 BEAT 2), then the Kafka-visible wake trigger (TAG change on the model, the category
 empirically confirmed to fire EntityChangeEvent_v1 for an EXISTING mlModel). All on the
-isolated mnemo_wake_verify_* namespace only."""
+isolated warden_wake_verify_* namespace only."""
 import os
 import sys
 
@@ -21,13 +21,13 @@ g = DataHubGraph(DataHubGraphConfig(
     token=os.getenv("DATAHUB_GMS_TOKEN") or None,
 ))
 
-WAKE_DS2 = make_dataset_urn("hive", "mnemo_wake_verify_source_v2", "PROD")
-WAKE_FEAT = "urn:li:mlFeature:(mnemo_wake_verify,test_feature)"
-WAKE_MODEL = "urn:li:mlModel:(urn:li:dataPlatform:mlflow,mnemo_wake_verify_model,PROD)"
+WAKE_DS2 = make_dataset_urn("hive", "warden_wake_verify_source_v2", "PROD")
+WAKE_FEAT = "urn:li:mlFeature:(warden_wake_verify,test_feature)"
+WAKE_MODEL = "urn:li:mlModel:(urn:li:dataPlatform:mlflow,warden_wake_verify_model,PROD)"
 
-print("silent re-point: feature source -> mnemo_wake_verify_source_v2 (same name/desc)")
+print("silent re-point: feature source -> warden_wake_verify_source_v2 (same name/desc)")
 g.emit(MCP(entityUrn=WAKE_FEAT, aspect=MLFeaturePropertiesClass(description="wake-test feature", sources=[WAKE_DS2])))
 
 print("Kafka-visible wake trigger: TAG add on WAKE_MODEL")
-g.emit(MCP(entityUrn=WAKE_MODEL, aspect=GlobalTagsClass(tags=[TagAssociationClass(tag="urn:li:tag:mnemo_wake_trigger")])))
-print("done — watch actions/verify_run.log for 'MNEMO WAKE'")
+g.emit(MCP(entityUrn=WAKE_MODEL, aspect=GlobalTagsClass(tags=[TagAssociationClass(tag="urn:li:tag:warden_wake_trigger")])))
+print("done — watch actions/verify_run.log for 'WARDEN WAKE'")

@@ -3,7 +3,7 @@
 ML-track HERO demo: silent upstream semantic re-point caught by memory.
 
 A feature's SOURCE table is swapped (fct_users_created → fct_users_created_v2) while its NAME and
-DESCRIPTION stay identical. A schema-diff tool sees nothing. Mnemo remembers the prior source-set,
+DESCRIPTION stay identical. A schema-diff tool sees nothing. Warden remembers the prior source-set,
 sees the delta, feeds it as CONTRADICTING evidence → the model's confidence drops below the
 governance threshold → it opens a DataHub Proposal instead of silently trusting the model.
 
@@ -35,16 +35,16 @@ from datahub.metadata.schema_classes import (
 )
 
 from confidence_model import Belief
-from mnemo.agent import MnemoAgent
-from mnemo.memory import MnemoMemory
+from warden.agent import WardenAgent
+from warden.memory import WardenMemory
 
 load_dotenv()
 g = DataHubGraph(DataHubGraphConfig(
     server=os.getenv("DATAHUB_GMS_URL", "http://localhost:8090"),
     token=os.getenv("DATAHUB_GMS_TOKEN") or None,
 ))
-mem = MnemoMemory(g)
-agent = MnemoAgent(g)
+mem = WardenMemory(g)
+agent = WardenAgent(g)
 
 FCT = make_dataset_urn("hive", "fct_users_created", "PROD")
 FCT2 = make_dataset_urn("hive", "fct_users_created_v2", "PROD")
@@ -98,7 +98,7 @@ print("   feature 'days_since_signup' silently re-pointed fct_users_created → 
 print("   (name unchanged, description unchanged — a schema-diff sees nothing)")
 time.sleep(1)
 
-print("\n=== BEAT 3-4: Mnemo wakes, compares to memory, re-scores, governs ===")
+print("\n=== BEAT 3-4: Warden wakes, compares to memory, re-scores, governs ===")
 b2, summary_json = mem.load(MODEL)
 remembered = json.loads(summary_json)["input_sources"]
 now = model_input_sources()
@@ -116,25 +116,25 @@ if changed:
         print(f"   ⚠️  confidence {b2.confidence:.3f} < 0.70 → verdict={result['verdict']} "
               f"(OSS has no ActionRequest/Proposal entity — that's Cloud-only; this is the honest "
               f"OSS-native human gate instead)")
-        print(f"   wrote mnemo.governance_status={result['governance_status']} + tag "
+        print(f"   wrote warden.governance_status={result['governance_status']} + tag "
               f"{result['tag']} ({result['tag_action']}) on {MODEL}")
         print("   (a human-visible review gate — the model's own description is never touched)")
         # live read-back from the graph — proof this is a real write, not a print
         sp_after = g.get_aspect(MODEL, StructuredPropertiesClass)
         gov_status_live = None
         for p in (sp_after.properties if sp_after else []):
-            if p.propertyUrn.endswith("mnemo.governance_status"):
+            if p.propertyUrn.endswith("warden.governance_status"):
                 gov_status_live = p.values[0] if p.values else None
         tags_after = g.get_aspect(MODEL, GlobalTagsClass)
         tag_urns_live = [t.tag for t in tags_after.tags] if tags_after and tags_after.tags else []
-        print(f"   [read-back from GMS] mnemo.governance_status={gov_status_live!r}  "
+        print(f"   [read-back from GMS] warden.governance_status={gov_status_live!r}  "
               f"globalTags={tag_urns_live}")
         description_after = g.get_aspect(MODEL, MLModelPropertiesClass).description
         print(f"   [description untouched] before={description_before!r} after={description_after!r} "
               f"unchanged={description_before == description_after}")
     print("\n=== BEAT 5: payoff ===")
     print("   Caught before the next training run baked the drift into prod —")
-    print("   because Mnemo REMEMBERED the prior source. A one-shot tool cannot see a")
+    print("   because Warden REMEMBERED the prior source. A one-shot tool cannot see a")
     print("   delta under an unchanged schema.")
     ok = b2.confidence < 0.7 and changed
     print("\nML-DRIFT DEMO", "GREEN ✅" if ok else "check")

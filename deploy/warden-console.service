@@ -1,5 +1,5 @@
 [Unit]
-Description=Mnemo Trust Console — read-only FastAPI window onto mnemo.* graph data
+Description=Warden Trust Console — read-only FastAPI window onto warden.* graph data
 Documentation=file:///root/hackathons/datahub-agent/console/README.md
 After=network-online.target datahub-stack.service
 Wants=network-online.target datahub-stack.service
@@ -12,7 +12,7 @@ Type=simple
 User=root
 WorkingDirectory=/root/hackathons/datahub-agent
 Environment=DATAHUB_GMS_URL=http://localhost:8090
-Environment=MNEMO_CONSOLE_PORT=8808
+Environment=WARDEN_CONSOLE_PORT=8808
 # DATAHUB_GMS_TOKEN=... — set here (not in a world-readable file) only if this GMS requires auth.
 # NEVER add ANTHROPIC_API_KEY or any secret here: this process's job is a public-facing read tier.
 ExecStart=/root/hackathons/datahub-agent/.venv/bin/uvicorn console.app:app --host 127.0.0.1 --port 8808

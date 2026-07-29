@@ -8,7 +8,7 @@
 ```bash
 cd /root/hackathons/datahub-agent
 # stack must be up (systemd boot chain keeps it up across reboots):
-systemctl is-active datahub-stack mnemo-console mnemo-wake   # → active / active / active
+systemctl is-active datahub-stack warden-console warden-wake   # → active / active / active
 curl -s -m5 -o /dev/null -w '%{http_code}\n' http://localhost:8090/health   # → 200
 ```
 Do ONE silent dry run of Beat 3 first (warm caches / confirm green), THEN the recorded take —
@@ -26,7 +26,7 @@ capturable live: `http://127.0.0.1:8808` (read-only). The lines that MUST land o
 - silent re-point `SampleHiveDataset → SampleHdfsDataset` (the "a schema-diff sees nothing" moment)
 - `Kafka wake trigger — fresh TAG-ADD`
 - **the autonomy proof:** `on_graph_via='reverse-lineage'` — scienceModel is NOT in the running
-  service's static `MNEMO_WATCH_MODELS`; reverse-lineage resolved it
+  service's static `WARDEN_WATCH_MODELS`; reverse-lineage resolved it
 - `GATE 3 ... confidence=0.6` (the drop lands)
 - Trust Console flips `scienceModel` → red `NEEDS_REVIEW`
 - `GATE 5 ... downstream agent REFUSED to recommend scienceModel` (the interop moat)
@@ -39,7 +39,7 @@ A terminal-only screencast of this run is captured programmatically via
 ```bash
 .venv/bin/python run_ml_drift_demo.py    # show ONLY beat-1 output: "confidence 0.901, remembered sources [...]"
 ```
-Then DataHub UI → Properties tab → `mnemo.confidence 0.901` (`http://localhost:9002`).
+Then DataHub UI → Properties tab → `warden.confidence 0.901` (`http://localhost:9002`).
 
 ## 3. Beat 1 — the calm "before" (capture BEFORE step 1 mutates state, or reset)
 DataHub UI on the `scienceModel` (mlflow, PROD) entity page — calm/green, one clean upstream path.
@@ -48,11 +48,11 @@ Reset to a clean baseline anytime with the demo's own idempotent `baseline_reset
 
 ## 4. Voiceover
 `../DEMO_VOICEOVER.md` (v2, Kokoro `am_michael` @0.95). Generate:
-`/root/handoff/video/kokoroenv/bin/python /root/handoff/video/gen_kokoro_mnemo.py am_michael 0.95`
-→ clips in `/root/handoff/video/audio/mnemo/`. Record/lay the VO against the assembled cut last.
+`/root/handoff/video/kokoroenv/bin/python /root/handoff/video/gen_kokoro_warden.py am_michael 0.95`
+→ clips in `/root/handoff/video/audio/warden/`. Record/lay the VO against the assembled cut last.
 
 ## 5. Honesty (keep on screen, never narrate past it)
-- "wakes on event" = real systemd Kafka Actions consumer (`mnemo-wake.service`) for this beat;
+- "wakes on event" = real systemd Kafka Actions consumer (`warden-wake.service`) for this beat;
   polling remains the shipped default elsewhere. Events are demo-injected, not organic prod traffic.
 - confidence `0.901 → 0.600` is a real, live-written value; the *drop magnitude* is a principled
   Bayesian log-odds update, NOT a measured drift statistic on this sample pair — the script says so.
