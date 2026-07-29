@@ -28,3 +28,7 @@ eval/_run_logs/
 actions/wake_service*.log
 
 run_live_chain_demo_*.log
+
+# python build artifacts
+build/
+*.egg-info/
