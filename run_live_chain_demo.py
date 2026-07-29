@@ -433,6 +433,12 @@ def gate3_wait_for_governance(g) -> None:
               "(with an on-graph reverse-lineage witness) within 60s. Check "
               "actions/wake_service.err.log for 'MNEMO WAKE' lines and confirm G2's reverse-lineage "
               "resolved SampleHdfsDataset -> scienceModel (grep 'via=reverse-lineage').")
+    # On-screen honesty (delivers the storyboard/README promise that the caveat is visible in the run,
+    # not just in the docs): the DROP MAGNITUDE is a principled Bayesian log-odds update from the
+    # structural source-delta term — it is NOT a measured drift statistic on this sample pair.
+    log("   [honesty] confidence drop 0.901->0.600 is a principled Bayesian log-odds update from the "
+        "structural source-delta term — NOT a measured drift statistic on this sample pair; the "
+        "measured-PSI variant is run_measured_drift_demo.py (adds a drift_stat term when profiles exist).")
 
 
 # --------------------------------------------------------------------------------------------- #

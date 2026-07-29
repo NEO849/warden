@@ -38,6 +38,11 @@ alarms **after** bad data has been ingested and scored — it watches the sympto
 targets the root cause and can catch the swap **before** the next training run ever touches it, not weeks
 after someone finally audits why accuracy fell.
 
+*(In the demo video this exact pattern runs live on DataHub's stock sample graph — a silent
+`SampleHiveDataset → SampleHdfsDataset` re-point on `scienceModel`, the fixture every `datahub docker
+quickstart` ships — so it reproduces against a vanilla DataHub; the `fct_users_created → _v2` example
+above is the same shape on a purpose-built fixture.)*
+
 ## How Mnemo catches it
 
 Mnemo keeps a **per-asset memory that lives on the graph itself** — not in a side database, not in a chat
