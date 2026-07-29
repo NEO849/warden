@@ -16,7 +16,7 @@ instead of re-deriving it from scratch every time. The belief lives on the entit
 chat transcript, so it survives across agents and across runs.
 
 **Links:** Demo video `[VIDEO]` · Live Trust Console `[LIVE-CONSOLE]` · OSS PR to `datahub-skills`
-`[OSS-PR]` · Repo `[REPO]` · [Reproduce it yourself](docs/REPRODUCE.md)
+`[OSS-PR]` · Repo https://github.com/NEO849/warden · [Reproduce it yourself](docs/REPRODUCE.md)
 *(placeholders — filled in before final submission; see [Status / limitations](#status--limitations)
 for what each link backs up)*
 

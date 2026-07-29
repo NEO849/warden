@@ -15,7 +15,7 @@ Compounding, governed memory for the data graph — Warden catches silent ML mod
 unchanged schema by remembering what a model's inputs used to be.
 
 **Links:** Demo video `[VIDEO]` · Live Trust Console `[LIVE-CONSOLE]` · OSS PR to `datahub-skills`
-`[OSS-PR]` · Repo `[REPO]` — placeholders, filled in before final submission.
+`[OSS-PR]` · Repo https://github.com/NEO849/warden — placeholders, filled in before final submission.
 
 ## Governance before AI
 
@@ -173,7 +173,7 @@ python, datahub-sdk, datahub-actions-framework, ollama, docker, bayesian-inferen
 Setup and exact run commands (DataHub quickstart, `.env`, `python run_ml_drift_demo.py`,
 `python run_reflection_demo.py`) are in the repo [`README.md`](README.md), with a step-by-step
 reproduction walkthrough in [`docs/REPRODUCE.md`](docs/REPRODUCE.md). Live demo: `[VIDEO]` ·
-`[LIVE-CONSOLE]` · source: `[REPO]` · OSS contribution: `[OSS-PR]`.
+`[LIVE-CONSOLE]` · source: https://github.com/NEO849/warden · OSS contribution: `[OSS-PR]`.
 
 ## License
 
