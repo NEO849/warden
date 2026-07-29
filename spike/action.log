@@ -2,5 +2,5 @@ Python versions above 3.11 are not actively tested with yet. Please use Python 3
 [2026-07-24 10:41:09,697] INFO     {datahub_actions.cli.actions:106} - DataHub Actions version: 1.6.0.15
 2026-07-24 10:41:09,707 [datahub.masking.secret_registry] DEBUG: Batch registered 1 secrets (version 1)
 2026-07-24 10:41:09,708 [datahub.masking.secret_registry] DEBUG: Batch registered 1 secrets (version 2)
-[2026-07-24 10:41:09,823] INFO     {datahub_actions.plugin.source.kafka.kafka_event_source:340} - KafkaEventSource [mnemo]: pre-deserialization filter active — all MCL messages will be dropped before avrogen deserialization (MetadataChangeLogEvent_v1 is not present in the EventTypeFilter)
-[2026-07-24 10:41:09,837] INFO     {datahub_actions.cli.actions:178} - Action Pipeline with name 'mnemo' is now running.
+[2026-07-24 10:41:09,823] INFO     {datahub_actions.plugin.source.kafka.kafka_event_source:340} - KafkaEventSource [warden]: pre-deserialization filter active — all MCL messages will be dropped before avrogen deserialization (MetadataChangeLogEvent_v1 is not present in the EventTypeFilter)
+[2026-07-24 10:41:09,837] INFO     {datahub_actions.cli.actions:178} - Action Pipeline with name 'warden' is now running.
