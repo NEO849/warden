@@ -147,6 +147,20 @@ def _model_input_sources_now(g: DataHubGraph, model_urn: str) -> list[str]:
     return sorted(set(srcs))
 
 
+def _model_lineage_now(g: DataHubGraph, model_urn: str) -> list[dict]:
+    """Live model->feature->sources path, read straight off the graph. Reuses the exact same
+    read-only traversal as _model_input_sources_now (mlModel -> mlFeatures -> feature.sources)
+    but keeps the per-feature grouping instead of flattening to a single source set, so the
+    console can draw the reverse-lineage spine (source dataset -> feature -> model)."""
+    mp = g.get_aspect(model_urn, MLModelPropertiesClass)
+    lineage: list[dict] = []
+    for feat in (mp.mlFeatures if mp and mp.mlFeatures else []):
+        fp = g.get_aspect(feat, MLFeaturePropertiesClass)
+        srcs = sorted(set(fp.sources)) if fp and fp.sources else []
+        lineage.append({"feature": feat, "sources": srcs})
+    return lineage
+
+
 def compute_verdict(confidence: float | None, mass: float | None) -> str | None:
     """Display-only recompute of MnemoAgent.govern()'s 3-way verdict from the two public numbers
     (mnemo.confidence, mnemo.mass) already on the graph. Order matters and mirrors govern()
@@ -224,11 +238,16 @@ def api_model(urn: str):
     provenance = _parse_json_field(vals.get("mnemo.provenance")) or []
 
     current_sources: list[str] = []
+    lineage: list[dict] = []
     if _entity_type_segment(urn) == "mlmodel":
         try:
             current_sources = _model_input_sources_now(g, urn)
         except Exception:
             current_sources = []
+        try:
+            lineage = _model_lineage_now(g, urn)
+        except Exception:
+            lineage = []
 
     tags_aspect = g.get_aspect(urn, GlobalTagsClass)
     tag_list = [t.tag for t in tags_aspect.tags] if tags_aspect and tags_aspect.tags else []
@@ -250,6 +269,7 @@ def api_model(urn: str):
         "current_sources": current_sources,
         "sources_drifted": bool(current_sources) and set(current_sources) != set(remembered_sources),
         "provenance": provenance,
+        "lineage": lineage,
         "last_wake_ts": audit_ms,
         "last_wake_seconds_ago": (int(time.time() - audit_ms / 1000) if audit_ms else None),
     }

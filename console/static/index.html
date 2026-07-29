@@ -4,56 +4,599 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mnemo — Trust Console</title>
-<link rel="stylesheet" href="/static/style.css">
+<style>
+:root{
+  --ground:#0a0c0e; --panel:#101418; --panel-2:#0d1114; --hair:#1b2127;
+  --ink:#e9eef1; --ink-2:#9aa6ad; --ink-3:#5c676e;
+  --trust:#37e6a0; --watch:#f5c451; --review:#ff5b52;
+  --trust-dim:#0f3a2b; --review-dim:#3a1512;
+  --mono:ui-monospace,"SF Mono","Cascadia Code","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme: light){
+  :root{ --ground:#eef1f3; --panel:#f7f9fa; --panel-2:#eceff1; --hair:#d3dade;
+    --ink:#141a1f; --ink-2:#48555d; --ink-3:#7d8a92;
+    --trust:#12a566; --watch:#b47b0a; --review:#d63a31; --trust-dim:#d5f2e5; --review-dim:#f7ddd9; }
+}
+:root[data-theme="dark"]{ --ground:#0a0c0e; --panel:#101418; --panel-2:#0d1114; --hair:#1b2127;
+  --ink:#e9eef1; --ink-2:#9aa6ad; --ink-3:#5c676e; --trust:#37e6a0; --watch:#f5c451; --review:#ff5b52;
+  --trust-dim:#0f3a2b; --review-dim:#3a1512; }
+:root[data-theme="light"]{ --ground:#eef1f3; --panel:#f7f9fa; --panel-2:#eceff1; --hair:#d3dade;
+  --ink:#141a1f; --ink-2:#48555d; --ink-3:#7d8a92; --trust:#12a566; --watch:#b47b0a; --review:#d63a31;
+  --trust-dim:#d5f2e5; --review-dim:#f7ddd9; }
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--ground); color:var(--ink); font-family:var(--sans);
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(circle at 1px 1px, var(--hair) 1px, transparent 0);
+  background-size:26px 26px; background-attachment:fixed;
+}
+.wrap{max-width:1180px; margin:0 auto; padding:0 20px 64px}
+
+header{display:flex; align-items:center; gap:16px; padding:20px 0 14px; flex-wrap:wrap}
+.brand{font-family:var(--mono); font-weight:600; letter-spacing:.16em; text-transform:uppercase;
+  font-size:13px; color:var(--ink)}
+.brand b{color:var(--trust)}
+.brand .sep{color:var(--ink-3); margin:0 .5em}
+.live{display:inline-flex; align-items:center; gap:7px; font-family:var(--mono); font-size:11px;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--ink-2)}
+.live .dot{width:7px; height:7px; border-radius:50%; background:var(--trust); box-shadow:0 0 8px var(--trust)}
+.live.stale .dot{background:var(--ink-3); box-shadow:none}
+@media (prefers-reduced-motion:no-preference){ .live:not(.stale) .dot{animation:pulse 2.4s ease-in-out infinite} }
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.spacer{flex:1}
+.hb{font-family:var(--mono); font-size:11px; color:var(--ink-3); letter-spacing:.08em}
+button.toggle{font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+  background:var(--panel); color:var(--ink-2); border:1px solid var(--hair); border-radius:2px;
+  padding:6px 10px; cursor:pointer}
+button.toggle:hover{color:var(--ink); border-color:var(--ink-3)}
+button:focus-visible,[tabindex]:focus-visible,a:focus-visible{outline:2px solid var(--trust); outline-offset:2px}
+
+.scope{position:relative; border:1px solid var(--hair); border-radius:4px; overflow:hidden;
+  background:var(--panel-2); margin-bottom:6px}
+.scope canvas{display:block; width:100%; height:200px}
+.scope .label{position:absolute; top:10px; left:12px; font-family:var(--mono); font-size:10.5px;
+  letter-spacing:.18em; text-transform:uppercase; color:var(--ink-3)}
+.scope .thresh-tag{position:absolute; right:12px; font-family:var(--mono); font-size:10.5px;
+  color:var(--ink-2); letter-spacing:.06em}
+.legend{display:flex; gap:18px; flex-wrap:wrap; font-family:var(--mono); font-size:11px;
+  color:var(--ink-2); padding:2px 2px 22px; letter-spacing:.03em}
+.legend span{display:inline-flex; align-items:center; gap:7px}
+.legend i{width:22px; height:2px; border-radius:2px; display:inline-block}
+.legend i.dashed{background:repeating-linear-gradient(90deg,var(--review) 0 5px,transparent 5px 8px)}
+
+.grid{display:grid; grid-template-columns:minmax(340px,1fr) minmax(360px,1.15fr); gap:20px}
+@media (max-width:840px){ .grid{grid-template-columns:1fr} }
+.eyebrow{font-family:var(--mono); font-size:10.5px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--ink-3); margin:0 0 10px}
+
+.list{display:flex; flex-direction:column; gap:8px}
+.row{display:grid; grid-template-columns:1fr auto; gap:4px 14px; align-items:center;
+  background:var(--panel); border:1px solid var(--hair); border-left:3px solid var(--ink-3);
+  border-radius:3px; padding:12px 14px; cursor:pointer; text-align:left; width:100%; color:inherit;
+  font:inherit}
+.row.s-trusted{border-left-color:var(--trust)}
+.row.s-watch{border-left-color:var(--watch)}
+.row.s-review{border-left-color:var(--review)}
+.row:hover{border-color:var(--ink-3)}
+.row[aria-selected="true"]{background:var(--panel-2); border-color:var(--ink-2); box-shadow:inset 0 0 0 1px var(--hair)}
+.row .name{font-family:var(--mono); font-size:14px; color:var(--ink); font-weight:500}
+.row .plat{font-family:var(--mono); font-size:10.5px; color:var(--ink-3); letter-spacing:.04em}
+.pill{grid-row:1/3; justify-self:end; align-self:center; display:inline-flex; align-items:center; gap:6px;
+  font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase;
+  padding:5px 9px; border-radius:2px; white-space:nowrap}
+.pill.s-trusted{color:var(--trust); background:var(--trust-dim)}
+.pill.s-watch{color:var(--watch); background:color-mix(in srgb, var(--watch) 16%, transparent)}
+.pill.s-review{color:var(--review); background:var(--review-dim)}
+.pill .g{font-size:11px; line-height:1}
+
+.bullet{grid-column:1/2; margin-top:9px}
+.bullet .track{position:relative; height:9px; border-radius:2px; overflow:hidden;
+  background:linear-gradient(90deg, color-mix(in srgb,var(--review) 22%,transparent) 0 var(--gate),
+    color-mix(in srgb,var(--watch) 18%,transparent) var(--gate) calc(var(--gate) + 12%),
+    color-mix(in srgb,var(--trust) 14%,transparent) calc(var(--gate) + 12%) 100%)}
+.bullet .val{position:absolute; top:0; left:0; height:100%; border-radius:2px 0 0 2px; background:currentColor;
+  box-shadow:0 0 8px currentColor}
+.bullet .gate{position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--ink); opacity:.75}
+.bullet.s-trusted{color:var(--trust)} .bullet.s-watch{color:var(--watch)} .bullet.s-review{color:var(--review)}
+.bullet .read{display:flex; justify-content:space-between; margin-top:5px; font-family:var(--mono);
+  font-size:10.5px; color:var(--ink-2); font-variant-numeric:tabular-nums}
+.bullet .read b{color:var(--ink)}
+
+.detail{background:var(--panel); border:1px solid var(--hair); border-radius:4px; padding:18px; min-height:200px}
+.detail h2{font-family:var(--mono); font-size:16px; margin:0 0 2px; letter-spacing:.02em; word-break:break-word}
+.detail .sub{font-family:var(--mono); font-size:11px; color:var(--ink-3); margin-bottom:16px}
+.block-label{font-family:var(--mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--ink-3); margin:20px 0 10px; display:flex; align-items:center; gap:8px}
+.block-label::after{content:""; flex:1; height:1px; background:var(--hair)}
+.drift-note{font-family:var(--mono); font-size:11px; color:var(--ink-2); margin-top:8px}
+.drift-note b{color:var(--ink)}
+.empty{font-family:var(--mono); font-size:12px; color:var(--ink-3); padding:10px 0}
+
+.spine{width:100%; overflow-x:auto}
+.spine svg{display:block}
+.spine .edge{stroke:var(--ink-3); stroke-width:2; fill:none}
+.spine .edge.hot{stroke:var(--review)}
+.node-dot{fill:var(--panel); stroke:var(--ink-2); stroke-width:2}
+.node-dot.changed{stroke:var(--review); fill:var(--review-dim)}
+.node-dot.affected{stroke:var(--trust); fill:var(--trust-dim)}
+.node-dot.affected.flagged{stroke:var(--review); fill:var(--review-dim)}
+.spine text{font-family:var(--mono); fill:var(--ink); font-size:12px}
+.spine text.kind{fill:var(--ink-3); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase}
+.spine .walk{font-family:var(--mono); font-size:10px; fill:var(--review); letter-spacing:.08em}
+
+.curve{width:100%; overflow-x:auto}
+.curve svg{display:block}
+.curve .line{stroke:var(--ink-2); stroke-width:2; fill:none}
+.curve .line.flagged{stroke:var(--review)}
+.curve .gateline{stroke:var(--ink-3); stroke-width:1; stroke-dasharray:4 5; opacity:.6}
+.curve .pt{fill:var(--ink); stroke:var(--panel); stroke-width:1.5}
+.curve .pt.hit{fill:var(--review)}
+.curve text{font-family:var(--mono); fill:var(--ink-3); font-size:9.5px}
+
+.trail{list-style:none; margin:0; padding:0; position:relative}
+.trail::before{content:""; position:absolute; left:9px; top:6px; bottom:14px; width:2px; background:var(--hair)}
+.step{position:relative; padding:0 0 16px 34px}
+.step .mk{position:absolute; left:0; top:1px; width:20px; height:20px; border-radius:50%;
+  background:var(--panel); border:2px solid var(--ink-3); display:flex; align-items:center; justify-content:center;
+  font-size:11px; color:var(--ink-2); font-family:var(--mono)}
+.step.ok .mk{border-color:var(--trust); color:var(--trust)}
+.step.hit .mk{border-color:var(--review); color:var(--review); box-shadow:0 0 10px color-mix(in srgb,var(--review) 55%,transparent)}
+.step .t{font-size:13.5px; color:var(--ink)}
+.step .d{font-family:var(--mono); font-size:11.5px; color:var(--ink-2); margin-top:3px; line-height:1.5}
+.step .d b{color:var(--ink); font-variant-numeric:tabular-nums}
+.step.note .t{color:var(--ink-2); font-style:italic}
+.step.note .mk{border-style:dashed}
+
+.stamp{margin-top:6px; display:inline-flex; align-items:center; gap:12px; padding:12px 18px;
+  border:2px solid var(--review); border-radius:4px; color:var(--review);
+  font-family:var(--mono); letter-spacing:.14em; text-transform:uppercase; transform:rotate(-1.5deg)}
+.stamp .big{font-size:20px; font-weight:700}
+.stamp .meta{font-size:10px; color:var(--ink-2); letter-spacing:.06em; text-transform:none}
+.stamp.trusted{border-color:var(--trust); color:var(--trust); transform:rotate(-1deg)}
+.stamp.watch{border-color:var(--watch); color:var(--watch); transform:rotate(-1deg)}
+
+.a11y-toggle{margin-top:26px}
+.table-wrap{overflow-x:auto; margin-top:10px}
+table{border-collapse:collapse; width:100%; font-family:var(--mono); font-size:12px}
+th,td{text-align:left; padding:8px 12px; border-bottom:1px solid var(--hair); font-variant-numeric:tabular-nums}
+th{color:var(--ink-3); font-weight:500; letter-spacing:.06em; text-transform:uppercase; font-size:10.5px}
+[hidden]{display:none !important}
+footer{margin-top:34px; font-family:var(--mono); font-size:10.5px; color:var(--ink-3); letter-spacing:.04em}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.error-banner{font-family:var(--mono); font-size:12px; color:var(--review); border:1px solid var(--review);
+  background:var(--review-dim); border-radius:3px; padding:10px 12px; margin-bottom:14px}
+</style>
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <span class="brand-mark">◆</span>
-      <span class="brand-name">Mnemo</span>
-      <span class="brand-sub">Trust Console</span>
-    </div>
-    <div id="heartbeat" class="heartbeat heartbeat--pending" aria-live="polite">
-      <span class="hb-dot"></span>
-      <span id="hb-text">connecting…</span>
-    </div>
+<div class="wrap">
+  <header>
+    <div class="brand"><b>MNEMO</b><span class="sep">/</span>Trust Console</div>
+    <div class="live" id="liveBadge"><span class="dot"></span><span id="liveText">connecting…</span></div>
+    <div class="spacer"></div>
+    <div class="hb" id="hb">—</div>
+    <button class="toggle" id="themeBtn" aria-label="Toggle light or dark theme">Theme</button>
   </header>
 
-  <main class="layout">
-    <section class="panel panel--timeseries">
-      <div class="panel-head">
-        <h2>Confidence timeseries</h2>
-        <select id="model-select" aria-label="Select watched model"></select>
+  <div id="errorHost"></div>
+
+  <div class="scope">
+    <canvas id="scope" aria-hidden="true"></canvas>
+    <div class="label">Drift Seismograph · trust readings · governance gate 0.70</div>
+    <div class="thresh-tag" id="threshTag">governance gate 0.70</div>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--trust)"></i>Trusted — above the gate</span>
+    <span><i style="background:var(--watch)"></i>Watch — near the gate</span>
+    <span><i class="dashed"></i>Needs review — breached, torn red</span>
+  </div>
+
+  <div class="grid">
+    <section aria-label="Models">
+      <p class="eyebrow">Models on the graph · flagged first</p>
+      <div class="list" id="list" role="listbox" aria-label="Select a model"></div>
+
+      <div class="a11y-toggle">
+        <button class="toggle" id="tblBtn" aria-expanded="false">Show as table</button>
+        <div class="table-wrap" id="tblWrap" hidden>
+          <table>
+            <caption class="vh">All watched models with state, confidence and governance gate</caption>
+            <thead><tr><th>Model</th><th>State</th><th>Confidence</th><th>Gate</th></tr></thead>
+            <tbody id="tblBody"></tbody>
+          </table>
+        </div>
       </div>
-      <p class="panel-note">
-        Belief.provenance, read back live from <code>mnemo.provenance</code> on the graph —
-        not simulated. The line forks where a contradicting event (source re-point, drift) is folded in.
-      </p>
-      <div id="chart-mount" class="chart-mount">
-        <p class="empty">Loading…</p>
-      </div>
-      <dl id="model-meta" class="meta-grid"></dl>
     </section>
 
-    <section class="panel panel--queue">
-      <div class="panel-head">
-        <h2>Governance queue</h2>
-        <span id="queue-count" class="badge badge--muted">0</span>
-      </div>
-      <p class="panel-note">
-        Models where <code>mnemo.governance_status = NEEDS_REVIEW</code> — Mnemo's confidence
-        fell below τ=0.70 after contradicting evidence and a human should look before it's trusted again.
-      </p>
-      <div id="queue-mount">
-        <p class="empty">Loading…</p>
-      </div>
+    <section class="detail" id="detail" aria-live="polite">
+      <p class="empty">Loading models…</p>
     </section>
-  </main>
+  </div>
 
-  <footer class="footer">
-    <span>Read-only · sourced live from <code id="gms-url-note">DataHub GMS</code> · no mutation endpoints in this app</span>
-  </footer>
+  <footer>Live · reads <b>mnemo.*</b> structured properties + <b>mnemo-needs-review</b> tag off the real DataHub graph via <code>/api/models</code>, <code>/api/model/&lt;urn&gt;</code>, <code>/api/heartbeat</code>. Read-only — no mutation endpoint exists in this app.</footer>
+</div>
 
-  <script src="/static/app.js"></script>
+<script>
+"use strict";
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const GATE = 0.70;
+
+/* ---------- tiny helpers ---------- */
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+function shortName(urn){
+  if (typeof urn !== "string") return String(urn);
+  let inner = urn.replace(/^urn:li:[^:]+:\(?/, "").replace(/\)$/, "");
+  const parts = inner.split(",");
+  const cand = parts.filter(p => !/^urn:li:/.test(p) && !/^(PROD|DEV|STAGING|CORP|EI|QA)$/.test(p));
+  return cand.length ? cand[cand.length - 1] : (parts[parts.length - 1] || urn);
+}
+function platOf(urn){
+  const m = typeof urn === "string" && urn.match(/dataPlatform:([^,]+),[^,]+,([A-Za-z0-9_]+)\)$/);
+  return m ? `${m[1]} · ${m[2]}` : "";
+}
+function fmtAgo(sec){
+  if (sec === null || sec === undefined) return "unknown";
+  if (sec < 60) return `${sec}s ago`;
+  if (sec < 3600) return `${Math.floor(sec/60)}m ago`;
+  if (sec < 86400) return `${Math.floor(sec/3600)}h ${Math.floor((sec%3600)/60)}m ago`;
+  return `${Math.floor(sec/86400)}d ago`;
+}
+function stateOf(m){
+  if (m.governance_status === "NEEDS_REVIEW") return "review";
+  if (typeof m.confidence === "number" && m.confidence >= 0.85) return "trusted";
+  return "watch";
+}
+const ORDER = { review:0, watch:1, trusted:2 };
+const stateLabel = { trusted:"Trusted", watch:"Watch", review:"Needs review" };
+const stateGlyph = { trusted:"✓", watch:"▲", review:"▲" };
+
+/* ---------- app state ---------- */
+let MODELS = [];          // raw rows from /api/models
+let sorted = [];
+let selectedUrn = null;
+const detailCache = new Map();
+
+const list = document.getElementById("list");
+const tblBody = document.getElementById("tblBody");
+const detail = document.getElementById("detail");
+const errorHost = document.getElementById("errorHost");
+const liveBadge = document.getElementById("liveBadge");
+const liveText = document.getElementById("liveText");
+const hb = document.getElementById("hb");
+
+function showError(msg){
+  errorHost.innerHTML = `<div class="error-banner" role="alert">${esc(msg)}</div>`;
+}
+function clearError(){ errorHost.innerHTML = ""; }
+
+/* ---------- fetch layer ---------- */
+async function getJSON(url){
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${url} → HTTP ${r.status}`);
+  return r.json();
+}
+
+async function loadModels(){
+  const data = await getJSON("/api/models");
+  MODELS = data.models || [];
+  sorted = [...MODELS].sort((a,b)=> ORDER[stateOf(a)] - ORDER[stateOf(b)] || (b.confidence??0) - (a.confidence??0));
+  renderList();
+  buildTraces();
+  if (!selectedUrn && sorted.length) {
+    // Prefer the demo hero (scienceModel — the one with a real reverse-lineage path) as the
+    // opening detail; fall back to the first flagged model otherwise.
+    const hero = sorted.find(m => (m.model_name || m.urn || "").includes("scienceModel")) || sorted[0];
+    select(hero.urn);
+  }
+}
+
+async function loadHeartbeat(){
+  const hbData = await getJSON("/api/heartbeat");
+  renderHeartbeat(hbData);
+}
+
+/* ---------- model list + table ---------- */
+function renderList(){
+  list.innerHTML = "";
+  tblBody.innerHTML = "";
+  if (!sorted.length){
+    list.innerHTML = `<p class="empty">No models observed yet — Mnemo has not written mnemo.confidence to any mlModel.</p>`;
+    return;
+  }
+  sorted.forEach(m=>{
+    const st = stateOf(m);
+    const conf = typeof m.confidence === "number" ? m.confidence : 0;
+    const btn = document.createElement("button");
+    btn.className = `row s-${st}`;
+    btn.setAttribute("role","option");
+    btn.setAttribute("aria-selected", String(m.urn === selectedUrn));
+    btn.dataset.urn = m.urn;
+    btn.innerHTML = `
+      <div class="name">${esc(m.model_name || shortName(m.urn))}</div>
+      <div class="plat">${esc(platOf(m.urn))} · wake ${esc(fmtAgo(m.last_wake_seconds_ago))}</div>
+      <span class="pill s-${st}"><span class="g" aria-hidden="true">${stateGlyph[st]}</span>${stateLabel[st]}</span>
+      <div class="bullet s-${st}" style="--gate:${GATE*100}%">
+        <div class="track"><span class="gate" style="left:${GATE*100}%"></span>
+          <span class="val" style="width:${Math.max(0,Math.min(100,conf*100))}%"></span></div>
+        <div class="read"><span>confidence <b>${conf.toFixed(3)}</b></span><span>gate ${GATE.toFixed(2)}</span></div>
+      </div>`;
+    btn.addEventListener("click", ()=> select(m.urn));
+    list.appendChild(btn);
+    tblBody.insertAdjacentHTML("beforeend",
+      `<tr><td>${esc(m.model_name || shortName(m.urn))}</td><td>${stateLabel[st]}</td><td>${conf.toFixed(3)}</td><td>${GATE.toFixed(2)}</td></tr>`);
+  });
+}
+
+/* ---------- heartbeat ticker ---------- */
+function renderHeartbeat(hbData){
+  const stale = !hbData.awake;
+  liveBadge.classList.toggle("stale", stale);
+  liveText.textContent = hbData.awake ? "Live" : "Idle";
+  hb.textContent = `wake · ${fmtAgo(hbData.last_event_seconds_ago)} · watching ${hbData.watching_count} · ${hbData.source}`;
+}
+
+/* ---------- detail ---------- */
+async function select(urn){
+  selectedUrn = urn;
+  [...list.children].forEach(c => c.setAttribute("aria-selected", String(c.dataset.urn === urn)));
+  detail.innerHTML = `<p class="empty">Loading detail…</p>`;
+  try{
+    let d = detailCache.get(urn);
+    if (!d){
+      d = await getJSON(`/api/model/${encodeURIComponent(urn)}`);
+      detailCache.set(urn, d);
+    }
+    renderDetail(d);
+  } catch(e){
+    detail.innerHTML = `<p class="empty">Could not load detail for this model (${esc(e.message)}).</p>`;
+  }
+}
+
+function renderDetail(d){
+  const rowMeta = MODELS.find(m => m.urn === d.urn);
+  const displayName = (rowMeta && rowMeta.model_name) || shortName(d.urn);
+  const st = rowMeta ? stateOf(rowMeta) : (d.governance_status === "NEEDS_REVIEW" ? "review"
+      : (typeof d.confidence === "number" && d.confidence >= 0.85 ? "trusted" : "watch"));
+  const flagged = d.governance_status === "NEEDS_REVIEW";
+
+  const stamp = flagged
+    ? `<div class="stamp"><span class="big">Needs Review</span><span class="meta">written on the graph as <b>mnemo.governance_status</b><br>a human must clear it</span></div>`
+    : `<div class="stamp ${st === "watch" ? "watch" : "trusted"}"><span class="big">${st === "watch" ? "Watched" : "Trusted"}</span><span class="meta">above the gate<br>consumable</span></div>`;
+
+  const findingLine = (d.summary && d.summary.desc) ? esc(d.summary.desc) : "No summary recorded for this entity.";
+
+  detail.innerHTML = `
+    <h2>${esc(displayName)}</h2>
+    <div class="sub">${esc(d.urn)}</div>
+    <p style="margin:0;color:var(--ink-2);font-size:13.5px">${findingLine}</p>
+
+    <div class="block-label">Reverse lineage — how Mnemo found it</div>
+    <div class="spine" id="spine"></div>
+    ${renderDriftNote(d)}
+
+    <div class="block-label">Confidence curve — from Belief.provenance</div>
+    <div class="curve" id="curve"></div>
+
+    <div class="block-label">Decision trail — why this verdict</div>
+    ${renderTrail(d)}
+    ${stamp}
+  `;
+  drawSpine(d, displayName, flagged);
+  drawCurve(d, flagged);
+}
+
+function renderDriftNote(d){
+  if (!d.remembered_sources || !d.current_sources || !d.remembered_sources.length && !d.current_sources.length){
+    return "";
+  }
+  return `<p class="drift-note">remembered <b>${d.remembered_sources.length}</b> source(s) · current <b>${d.current_sources.length}</b> source(s) · drifted right now: <b>${d.sources_drifted ? "yes" : "no"}</b></p>`;
+}
+
+function buildLineagePath(d, displayName){
+  const lineage = d.lineage || [];
+  if (!lineage.length) return null;
+  const sources = [...new Set(lineage.flatMap(l => l.sources || []))];
+  const features = [...new Set(lineage.map(l => l.feature))];
+  const changedSet = new Set((d.current_sources || []).filter(s => !(d.remembered_sources || []).includes(s)));
+  const nodes = [];
+  sources.forEach(s => nodes.push({ name: shortName(s), kind:"dataset", cls: changedSet.has(s) ? "changed" : "" }));
+  features.forEach(f => nodes.push({ name: shortName(f), kind:"mlFeature", cls: "" }));
+  nodes.push({ name: displayName, kind:"mlModel · affected", cls: "affected" });
+  return nodes;
+}
+
+function drawSpine(d, displayName, flagged){
+  const host = document.getElementById("spine");
+  const nodes = buildLineagePath(d, displayName);
+  if (!nodes || nodes.length < 2){
+    host.innerHTML = `<p class="empty">No lineage recorded for this entity yet.</p>`;
+    return;
+  }
+  if (flagged) nodes[nodes.length - 1].cls = "affected flagged";
+  const W = Math.max(320, host.clientWidth || 560), padX = 18, gap = (W - padX*2) / (nodes.length - 1), y = 34, r = 8;
+  let edges = "", dots = "", labels = "";
+  for (let i=0; i<nodes.length-1; i++){
+    const x1 = padX + i*gap, x2 = padX + (i+1)*gap;
+    edges += `<path class="edge ${flagged ? "hot" : ""}" d="M${x1} ${y} L${x2} ${y}" pathLength="1"
+      style="stroke-dasharray:1;stroke-dashoffset:${REDUCED ? 0 : 1};animation:${REDUCED ? "none" : `draw .5s ${0.15*(nodes.length-2-i)}s ease forwards`}"/>`;
+    const mx = (x1+x2)/2;
+    labels += `<text x="${mx}" y="${y-14}" text-anchor="middle" class="walk">${flagged ? "◂ walks back" : ""}</text>`;
+  }
+  const trunc = s => (s && s.length > 20) ? s.slice(0,19) + "…" : s;
+  nodes.forEach((n,i)=>{
+    const x = padX + i*gap;
+    dots += `<circle class="node-dot ${n.cls}" cx="${x}" cy="${y}" r="${r}"/>`;
+    const anchor = i===0 ? "start" : (i===nodes.length-1 ? "end" : "middle");
+    labels += `<text x="${x}" y="${y+26}" text-anchor="${anchor}"><title>${esc(n.name)}</title>${esc(trunc(n.name))}</text>
+      <text x="${x}" y="${y+40}" text-anchor="${anchor}" class="kind">${esc(n.kind)}</text>`;
+  });
+  host.innerHTML = `<svg width="${W}" height="84" viewBox="0 0 ${W} 84" role="img"
+    aria-label="Reverse lineage path from source dataset through feature to the model ${esc(displayName)}">
+    <style>@keyframes draw{to{stroke-dashoffset:0}}</style>${edges}${labels}${dots}</svg>`;
+}
+
+function drawCurve(d, flagged){
+  const host = document.getElementById("curve");
+  const prov = d.provenance || [];
+  const pts = prov.map(p => p.c_after).filter(v => typeof v === "number");
+  if (!pts.length){
+    host.innerHTML = `<p class="empty">No confidence history recorded yet.</p>`;
+    return;
+  }
+  const W = Math.max(320, host.clientWidth || 560), H = 96, padX = 22, padY = 16;
+  const x = i => padX + (pts.length>1 ? i*(W-2*padX)/(pts.length-1) : 0);
+  const y = v => (H-padY) - v*(H-2*padY);
+  const gy = y(GATE);
+  const path = pts.map((v,i)=> `${i?"L":"M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
+  let dots = "", labels = "";
+  prov.forEach((p,i)=>{
+    if (typeof p.c_after !== "number") return;
+    const hit = p.via === "reverse-lineage";
+    dots += `<circle class="pt ${hit?"hit":""}" cx="${x(i).toFixed(1)}" cy="${y(p.c_after).toFixed(1)}" r="${hit?4.5:3}"/>`;
+    const la = i===0 ? "start" : (i===prov.length-1 ? "end" : "middle");
+    const ev = p.event || p.source || ""; const evt = ev.length>13 ? ev.slice(0,12)+"…" : ev;
+    labels += `<text x="${x(i).toFixed(1)}" y="${H-2}" text-anchor="${la}"><title>${esc(ev)}</title>${esc(evt)}</text>`;
+  });
+  host.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img"
+      aria-label="Confidence over ${pts.length} recorded provenance events, gate at 0.70">
+    <line class="gateline" x1="${padX}" y1="${gy.toFixed(1)}" x2="${W-padX}" y2="${gy.toFixed(1)}"/>
+    <text x="${W-padX}" y="${(gy-4).toFixed(1)}" text-anchor="end">gate 0.70</text>
+    <path class="line ${flagged?"flagged":""}" d="${path}"/>
+    ${dots}${labels}
+  </svg>`;
+}
+
+function renderTrail(d){
+  const prov = d.provenance || [];
+  if (!prov.length){
+    return `<p class="empty">No decision trail recorded yet — this entity has no provenance events.</p>`;
+  }
+  const steps = prov.map(p=>{
+    const hit = p.via === "reverse-lineage";
+    const title = hit ? "Contradiction resolved via reverse lineage" : `${esc(p.source || "event")} · ${esc(p.event || "")}`;
+    const bits = [];
+    if (typeof p.delta === "number") bits.push(`delta <b>${p.delta >= 0 ? "+" : ""}${p.delta}</b>`);
+    if (typeof p.c_after === "number") bits.push(`confidence → <b>${p.c_after}</b>`);
+    if (typeof p.hops === "number") bits.push(`${p.hops} hop(s)`);
+    if (p.via) bits.push(`via <b>${esc(p.via)}</b>`);
+    return `<li class="step ${hit?"hit":"ok"}"><span class="mk" aria-hidden="true">${hit?"!":"✓"}</span>
+      <div class="t">${title}</div><div class="d">${bits.join(" · ")}</div></li>`;
+  }).join("");
+  const note = d.governance_status === "NEEDS_REVIEW"
+    ? `<li class="step note"><span class="mk" aria-hidden="true">i</span>
+        <div class="t">Verdict written on the graph</div>
+        <div class="d"><b>mnemo.governance_status = NEEDS_REVIEW</b>${d.needs_review_tag ? " + <b>mnemo-needs-review</b> tag" : ""} — description untouched</div></li>`
+    : "";
+  return `<ul class="trail">${steps}${note}</ul>`;
+}
+
+/* ---------- seismograph ---------- */
+const cv = document.getElementById("scope"), cx = cv.getContext("2d");
+let traces = [];
+let W=0, H=0, DPR=1;
+
+function buildTraces(){
+  traces = sorted.map(m=>({ m, st: stateOf(m), base: typeof m.confidence === "number" ? m.confidence : 0.5, buf: [] }));
+  resize();
+}
+function resize(){
+  DPR = Math.min(2, window.devicePixelRatio||1);
+  W = cv.clientWidth || 800; H = 200;
+  cv.width = W*DPR; cv.height = H*DPR; cx.setTransform(DPR,0,0,DPR,0,0);
+  const N = Math.ceil(W/2)+4;
+  traces.forEach(t=>{ if (t.buf.length===0) t.buf = Array.from({length:N}, ()=>t.base); });
+}
+function yFor(v){ const top=24, bot=H-24; return bot - (v-0.2)/(1.0-0.2)*(bot-top); }
+function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function step(){
+  traces.forEach(t=>{
+    const noise = (Math.random()-0.5) * (t.st==="review" ? 0.035 : 0.008);
+    let v = t.base + noise;
+    v = Math.max(0.02, Math.min(0.99, v));
+    t.buf.push(v); if (t.buf.length > Math.ceil(W/2)+4) t.buf.shift();
+  });
+}
+function draw(){
+  cx.globalCompositeOperation = "source-over";
+  const light = (document.documentElement.getAttribute("data-theme")==="light" ||
+    (!document.documentElement.getAttribute("data-theme") && matchMedia("(prefers-color-scheme: light)").matches));
+  cx.fillStyle = light ? "rgba(236,239,241,0.28)" : "rgba(10,12,14,0.30)";
+  cx.fillRect(0,0,W,H);
+  const gy = yFor(GATE);
+  cx.fillStyle = "rgba(255,91,82,0.05)"; cx.fillRect(0,gy,W,H-gy);
+  cx.strokeStyle = css("--ink-3"); cx.globalAlpha=.5; cx.setLineDash([4,5]); cx.lineWidth=1;
+  cx.beginPath(); cx.moveTo(0,gy); cx.lineTo(W,gy); cx.stroke(); cx.setLineDash([]); cx.globalAlpha=1;
+
+  const trust = css("--trust"), review = css("--review"), watch = css("--watch");
+  traces.forEach(t=>{
+    const col = t.st==="review" ? review : (t.st==="watch" ? watch : trust);
+    cx.strokeStyle = col; cx.lineWidth = t.st==="review" ? 2 : 1.6;
+    cx.shadowColor = col; cx.shadowBlur = t.st==="review" ? 12 : 7;
+    if (t.st === "review") cx.setLineDash([6,4]); else cx.setLineDash([]);
+    cx.beginPath();
+    t.buf.forEach((v,i)=>{ const x=i*2, y=yFor(v); i ? cx.lineTo(x,y) : cx.moveTo(x,y); });
+    cx.stroke();
+    cx.setLineDash([]);
+    const lastV = t.buf[t.buf.length-1], ex = (t.buf.length-1)*2, ey = yFor(lastV);
+    cx.fillStyle = col; cx.beginPath(); cx.arc(ex,ey, t.st==="review"?3:2.2, 0, 7); cx.fill();
+  });
+  cx.shadowBlur = 0;
+}
+let raf;
+function loop(){ step(); draw(); raf = requestAnimationFrame(loop); }
+function startScope(){
+  resize();
+  if (!traces.length){ cx.clearRect(0,0,W,H); return; }
+  if (REDUCED){ for (let k=0;k<Math.ceil(W/2)+4;k++) step(); draw(); return; }
+  cancelAnimationFrame(raf); loop();
+}
+window.addEventListener("resize", ()=>{
+  traces.forEach(t=>t.buf=[]);
+  startScope();
+  if (selectedUrn && detailCache.has(selectedUrn)){
+    const d = detailCache.get(selectedUrn);
+    const rowMeta = MODELS.find(m=>m.urn===selectedUrn);
+    const displayName = (rowMeta && rowMeta.model_name) || shortName(selectedUrn);
+    drawSpine(d, displayName, d.governance_status==="NEEDS_REVIEW");
+    drawCurve(d, d.governance_status==="NEEDS_REVIEW");
+  }
+});
+
+/* ---------- theme + table toggle ---------- */
+const themeBtn = document.getElementById("themeBtn");
+themeBtn.addEventListener("click", ()=>{
+  const cur = document.documentElement.getAttribute("data-theme");
+  const isLight = cur ? cur==="light" : matchMedia("(prefers-color-scheme: light)").matches;
+  document.documentElement.setAttribute("data-theme", isLight?"dark":"light");
+});
+const tblBtn = document.getElementById("tblBtn"), tblWrap = document.getElementById("tblWrap");
+tblBtn.addEventListener("click", ()=>{
+  const open = tblWrap.hasAttribute("hidden");
+  tblWrap.toggleAttribute("hidden", !open);
+  tblBtn.setAttribute("aria-expanded", String(open));
+  tblBtn.textContent = open ? "Hide table" : "Show as table";
+});
+
+/* ---------- boot + polling ---------- */
+async function boot(){
+  try{
+    await Promise.all([loadModels(), loadHeartbeat()]);
+    clearError();
+  } catch(e){
+    showError(`Console could not reach the API: ${e.message}`);
+  }
+  startScope();
+}
+boot();
+setInterval(()=>{ loadHeartbeat().catch(()=>{}); }, 15000);
+setInterval(()=>{
+  detailCache.clear();
+  loadModels().catch(()=>{});
+}, 30000);
+</script>
 </body>
 </html>
+</content>
