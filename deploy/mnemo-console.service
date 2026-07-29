@@ -1,11 +1,11 @@
 [Unit]
 Description=Mnemo Trust Console — read-only FastAPI window onto mnemo.* graph data
 Documentation=file:///root/hackathons/datahub-agent/console/README.md
-After=network-online.target
-Wants=network-online.target
-# NOTE: does not need docker.service directly (unlike mnemo-wake.service) — it only needs GMS
-# reachable over localhost:8090 by the time it starts serving requests, which it tolerates lazily
-# (first request that touches GMS will simply 502 until the stack is up).
+After=network-online.target datahub-stack.service
+Wants=network-online.target datahub-stack.service
+# Orders After=datahub-stack.service so it starts only once GMS is health-gated up (that unit's
+# ExecStartPost blocks until /health answers). It also tolerates GMS lazily (first request that
+# touches GMS 502s until up), so this ordering is belt-and-suspenders, not a hard requirement.
 
 [Service]
 Type=simple

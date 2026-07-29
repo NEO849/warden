@@ -1,0 +1,37 @@
+[Unit]
+Description=DataHub quickstart stack (Mnemo demo) — deterministic, health-gated bring-up
+Documentation=file:///root/hackathons/datahub-agent/EVENT_WAKE_STATUS.md
+# Ordering anchor for the whole Mnemo demo: mnemo-wake.service and mnemo-console.service
+# both order After= this unit, so they only start once GMS actually answers /health (below).
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/root/.datahub/quickstart
+# Token signing key + salt live here (0644, root) — same file the manual bring-up sources.
+EnvironmentFile=/root/.datahub/quickstart/.local-secrets.env
+# Pinned so image tags resolve to the exact pulled images (blank tag => only kafka-broker starts).
+Environment=DATAHUB_VERSION=v1.5.0.6
+Environment=UI_INGESTION_DEFAULT_CLI_VERSION=1.5.0.6
+# Without this profile, compose starts ONLY the profile-less kafka-broker (learned the hard way).
+Environment=COMPOSE_PROFILES=quickstart
+# Without this, GMS maps to host:8080 and every script's default DATAHUB_GMS_URL=:8090 breaks.
+Environment=DATAHUB_MAPPED_GMS_PORT=8090
+Environment=DATAHUB_MAPPED_FRONTEND_PORT=9002
+# `up -d` itself runs compose's health-gated depends_on wait and EXITS 1 after ~90s if GMS
+# isn't healthy yet (GMS cold boot is ~4min) — even though every container did start. So we
+# swallow that non-zero (|| true) and let ExecStartPost below be the ONLY success arbiter.
+# --no-recreate keeps existing containers as-is (no churn, no system-update re-run cascade).
+ExecStart=/usr/bin/bash -c '/usr/bin/docker compose -f /root/.datahub/quickstart/docker-compose.yml up -d --no-recreate 2>&1 || true'
+# Deterministic health gate: hold the unit "activating" until GMS truly answers, so downstream
+# units (wake/console) never start against a half-booted GMS. Up to 600s (GMS cold boot ~4min).
+ExecStartPost=/usr/bin/bash -c 'for i in $(seq 1 60); do /usr/bin/curl -fs -m5 http://localhost:8090/health >/dev/null 2>&1 && echo "GMS healthy after ~$((i*10))s" && exit 0; sleep 10; done; echo "GMS not healthy within 600s" >&2; exit 1'
+ExecStop=/usr/bin/docker compose -f /root/.datahub/quickstart/docker-compose.yml stop
+TimeoutStartSec=700
+TimeoutStopSec=180
+
+[Install]
+WantedBy=multi-user.target
