@@ -185,7 +185,9 @@ class MnemoWakeAction(Action):
         # never once appears in wake_service.err.log across thousands of lines — only WARNING+
         # from this logger ever surfaces). So the resolution source is ALSO folded into the
         # WARNING result line below (via=...), which is always visible, rather than relying on
-        # this line alone.
+        # this line alone. AND (below, check_model_inputs(..., via=resolution_source)) into the
+        # "schema" provenance entry itself — a DURABLE on-graph witness (mnemo.provenance) that
+        # survives a wake_service.err.log rotation/reset, not just a log line.
         logger.info(
             "MNEMO WAKE ▶ event=%s/%s entityType=%s urn=%s (watching %d model(s), resolved via %s)",
             category, getattr(e, "operation", None), entity_type, entity_urn,
@@ -194,7 +196,8 @@ class MnemoWakeAction(Action):
 
         for model_urn in target_models:
             try:
-                changed, remembered, now, belief, drift_info = self.agent.check_model_inputs(model_urn)
+                changed, remembered, now, belief, drift_info = self.agent.check_model_inputs(
+                    model_urn, via=resolution_source)
             except Exception:
                 logger.exception("MNEMO WAKE: check_model_inputs failed for %s", model_urn)
                 continue

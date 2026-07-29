@@ -66,18 +66,27 @@ class Belief:
         self.mass *= factor
 
     def update(self, source: str, corroborates: bool, hops: int, quality: float,
-               event_id: str | None = None) -> float:
-        """Add one piece of evidence. Returns the applied weight w (nats)."""
+               event_id: str | None = None, via: str | None = None) -> float:
+        """Add one piece of evidence. Returns the applied weight w (nats).
+
+        `via` (optional): a durable, on-graph witness of HOW this evidence's target was resolved
+        (e.g. "reverse-lineage" vs "static-watchlist" — see actions/mnemo_wake_action.py). Folded
+        straight into the provenance entry (mnemo.provenance is what actually lands on the graph,
+        see mnemo/memory.py::save) so callers never need a second write path or a new structured
+        property just to make a resolution source durably provable after a log reset. Omitted
+        (None) by default and then simply absent from the dict — every existing caller/demo that
+        never passes `via` gets byte-identical provenance entries to before this parameter existed."""
         rho = 1.0 if source == "human" else GAMMA ** hops   # human = undiscounted (d=0)
         sign = 1.0 if corroborates else -1.0
         w = sign * AUTHORITY.get(source, 1.0) * rho * quality
         w = max(-DW_MAX, min(DW_MAX, w))                     # clamp (anti-flap)
         self.log_odds += w
         self.mass += rho * quality
-        self.provenance.append(
-            {"source": source, "event": event_id, "hops": hops,
-             "delta": round(w, 3), "c_after": round(self.confidence, 3)}
-        )
+        entry = {"source": source, "event": event_id, "hops": hops,
+                 "delta": round(w, 3), "c_after": round(self.confidence, 3)}
+        if via is not None:
+            entry["via"] = via
+        self.provenance.append(entry)
         return w
 
     def needs_proposal(self) -> bool:

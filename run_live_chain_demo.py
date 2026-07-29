@@ -380,29 +380,59 @@ def gate3_wait_for_governance(g) -> None:
         # be true from the LAST run before this run's own trigger has fired at all, and this gate
         # would pass instantly on stale state (live-reproduced: confidence read back as 0.901 with
         # last_event=chain_baseline2, i.e. the pre-drift baseline, not the post-drift write).
-        # FIX: also require the provenance log's LAST entry to be the fresh contradicting
-        # schema/input_delta evidence baseline_reset() itself never appends (it only ever appends
-        # "lineage" events) -- append-only, so this can only become true once THIS run's wake
-        # event has actually been processed.
-        fresh_drift = last_prov.get("source") == "schema" and last_prov.get("event") == "input_delta"
+        # FIX: also require a fresh contradicting schema/input_delta evidence entry -- append-only,
+        # so this can only become true once THIS run's wake event has actually been processed.
+        # baseline_reset() itself never appends event_id="input_delta" (it only ever appends
+        # "lineage" events, and it REPLACES mnemo.provenance wholesale via a fresh Belief -- see
+        # MnemoMemory.save -- so the provenance list is guaranteed to start each run containing only
+        # those 2 lineage entries). Checking the exact LAST entry (as opposed to: any input_delta
+        # entry anywhere in the log) used to be required here -- BUT check_model_inputs() can also
+        # append a SECOND, trailing "drift_stat"/input_delta entry right after "schema"/input_delta
+        # (mnemo/agent.py ~line 168, whenever a DatasetProfile pair exists for the swapped sources)
+        # -- so strict last-entry equality is fragile: it is only ever green today because the
+        # sample fixtures happen to carry no DatasetProfile, not because the mechanism guarantees
+        # it. FIX (robust, not weaker): accept ANY input_delta-tagged entry as long as at least one
+        # of them is the "schema" evidence -- since provenance is reset to [lineage, lineage] every
+        # run by baseline_reset(), an input_delta entry can ONLY exist here because THIS run's
+        # check_model_inputs() actually fired; this still proves the same freshness the strict
+        # last-entry check did, without going falsely red the moment a profile pair starts existing.
+        input_delta_entries = [p for p in provenance if p.get("event") == "input_delta"]
+        fresh_drift = any(p.get("source") == "schema" for p in input_delta_entries)
+        # FIX A: the reverse-lineage resolution witness must be DURABLE on the graph, not provable
+        # only by exclusion (no static watch-list configured) or by a wake_service.err.log line that
+        # doesn't survive a log rotation/reset. actions/mnemo_wake_action.py now threads
+        # resolution_source ("reverse-lineage" | "static-watchlist") into
+        # MnemoAgent.check_model_inputs(..., via=...), which folds it onto the "schema" provenance
+        # entry itself (confidence_model.py::Belief.update's `via` param) -- so it round-trips
+        # through the exact same mnemo.provenance structured property GATE 3 already reads. Find
+        # that schema entry among the fresh input_delta entries and assert via=="reverse-lineage":
+        # scienceModel is never in the wake service's static MNEMO_WATCH_MODELS (see
+        # fire_kafka_trigger's own comment), so this run can ONLY have gotten here via G2.
+        schema_entry = next((p for p in input_delta_entries if p.get("source") == "schema"), {})
+        witnessed_via = schema_entry.get("via")
+        on_graph_reverse_lineage_witness = witnessed_via == "reverse-lineage"
         tags = g.get_aspect(SCIENCE_MODEL, GlobalTagsClass)
         tag_urns = [t.tag for t in tags.tags] if tags and tags.tags else []
         has_review_tag = NEEDS_REVIEW_TAG_URN in tag_urns
-        ok = fresh_drift and status == "NEEDS_REVIEW" and bool(finding) and has_review_tag
-        detail = (f"fresh_drift(last_prov={last_prov!r})={fresh_drift} status={status!r} "
+        ok = (fresh_drift and status == "NEEDS_REVIEW" and bool(finding) and has_review_tag
+              and on_graph_reverse_lineage_witness)
+        detail = (f"fresh_drift(input_delta_entries={input_delta_entries!r})={fresh_drift} "
+                  f"on_graph_via={witnessed_via!r} status={status!r} "
                   f"finding={'<set>' if finding else None!r} needs_review_tag={has_review_tag} "
                   f"confidence={vals.get('mnemo.confidence')}")
         return ok, detail
 
     ok, detail = poll_until("GATE 3", _check, timeout_s=60, interval_s=2.0)
     check("GATE 3: wake wrote a FRESH governance_status=NEEDS_REVIEW + finding + tag, keyed off the "
-          "append-only provenance log so stale state from a prior run cannot pass this gate "
-          "(<=60s, wake is ~30s async)", ok, detail)
+          "append-only provenance log so stale state from a prior run cannot pass this gate, AND the "
+          "on-graph provenance entry itself witnesses via=='reverse-lineage' (durable proof G2 "
+          "resolved this, not just absence-of-static-watchlist) (<=60s, wake is ~30s async)",
+          ok, detail)
     if not ok:
         abort("GATE 3 failed — the wake never wrote a fresh governance verdict for scienceModel "
-              "within 60s. Check actions/wake_service.err.log for 'MNEMO WAKE' lines and confirm "
-              "G2's reverse-lineage resolved SampleHdfsDataset -> scienceModel (grep "
-              "'via=reverse-lineage').")
+              "(with an on-graph reverse-lineage witness) within 60s. Check "
+              "actions/wake_service.err.log for 'MNEMO WAKE' lines and confirm G2's reverse-lineage "
+              "resolved SampleHdfsDataset -> scienceModel (grep 'via=reverse-lineage').")
 
 
 # --------------------------------------------------------------------------------------------- #

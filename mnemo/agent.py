@@ -144,7 +144,7 @@ class MnemoAgent:
                 best_field, best_psi = field_label, p
         return {"field": best_field, "psi": best_psi, "old_source": old_urn, "new_source": new_urn}
 
-    def check_model_inputs(self, model_urn):
+    def check_model_inputs(self, model_urn, via: str | None = None):
         """Return (changed, remembered, now, belief_after, drift_info). If changed, folds the
         structural source-delta in as contradicting evidence → confidence drops → governance can
         route it to a Proposal. ADDITIVE (Block 1): when a profile pair exists for the swapped
@@ -152,6 +152,14 @@ class MnemoAgent:
         PSI over the field histograms — see _measured_drift for the profile gate. drift_info is None
         whenever no profile pair was found (today's behavior, unchanged); otherwise it carries the
         measured PSI for the caller/demo/UI.
+
+        `via` (optional): how the CALLER resolved `model_urn` as a wake target — e.g.
+        actions/mnemo_wake_action.py passes "reverse-lineage" when G2's _reverse_lineage_models
+        found it, or "static-watchlist" when it fell back to the configured watch list. Folded onto
+        the contradicting "schema" evidence entry (Belief.update's `via`) so the resolution source
+        is DURABLE on the graph (mnemo.provenance, written by memory.save below) — on-graph proof a
+        Kafka log reset cannot erase, instead of only a log line. Callers that don't know/care about
+        their own resolution path (demos, direct calls) simply omit it — no behavior change.
         """
         belief, summary_json = self.memory.load(model_urn)
         try:
@@ -162,7 +170,8 @@ class MnemoAgent:
         changed = set(now) != set(remembered)
         drift_info = None
         if changed:
-            belief.update("schema", corroborates=False, hops=0, quality=1.0, event_id="input_delta")
+            belief.update("schema", corroborates=False, hops=0, quality=1.0, event_id="input_delta",
+                          via=via)
             drift_info = self._measured_drift(remembered, now)
             if drift_info is not None:
                 belief.update("drift_stat", corroborates=False, hops=0,
