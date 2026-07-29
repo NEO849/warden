@@ -10,8 +10,8 @@ semantics shifted deeper. One local Ollama model (llama3.1-8b, temp 0), identica
 the memory block changes:
 
 - **WITHOUT** — raw metadata only (schema, lineage, the change)
-- **WITH** — raw metadata + Mnemo's memory of the asset (natural-language recall)
-- **WITH_RAW** — raw metadata + Mnemo's memory stripped to **raw facts only**
+- **WITH** — raw metadata + Warden's memory of the asset (natural-language recall)
+- **WITH_RAW** — raw metadata + Warden's memory stripped to **raw facts only**
   (`prior_source=… ; prior_type=… ; prior_confidence=… ; current_source=…`), **no conclusion words**.
   The model must infer the verdict itself.
 - **PLACEBO** — raw metadata + an *unrelated* asset's memory (equal token budget)
@@ -27,7 +27,7 @@ the memory block changes:
 
 ## What this DOES show
 1. **Direction.** Relevant memory takes triage accuracy from 0.52 → 1.00. Without memory the agent labels
-   silent-DRIFT cases "NO_RISK" — exactly the failure Mnemo exists to prevent.
+   silent-DRIFT cases "NO_RISK" — exactly the failure Warden exists to prevent.
 2. **The placebo control is the real rigor result.** PLACEBO (0.33) is *worse* than WITHOUT (0.52): adding an
    *irrelevant* memory of equal length **hurts**. So the lift is NOT "more tokens" — it is the *relevant*
    memory. This is the control most hackathon entries omit.
@@ -46,5 +46,5 @@ the memory block changes:
   is the *direction + placebo control + adversarial-surviving WITH_RAW*, not a leaderboard number.
 
 **Bottom line for a judge:** the defensible headline is **direction (0.52 → 0.91 on raw facts, adversarial
-cases included) + the placebo control (irrelevant memory hurts)** — not the 100% ceiling. Mnemo's memory
+cases included) + the placebo control (irrelevant memory hurts)** — not the 100% ceiling. Warden's memory
 helps because it is *relevant and remembered*, and the model *reasons* from it.

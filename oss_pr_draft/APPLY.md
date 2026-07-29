@@ -3,8 +3,8 @@
 This is the **docs-only** contribution to `datahub-project/datahub-skills` recommended in
 `OSS_PR_PLAN.md`: it extends the existing `datahub-enrich` skill's structured-properties reference
 with the missing "define the property before you can write to it" step, plus a short reusable
-reference for the agent write-back pattern (define → write → read-back) that Mnemo itself relies on.
-Generic wording throughout — no Mnemo branding in the content.
+reference for the agent write-back pattern (define → write → read-back) that Warden itself relies on.
+Generic wording throughout — no Warden branding in the content.
 
 **Nothing here has been sent anywhere.** No fork, no branch, no push, no PR opened. Everything below
 is a plan for the user to execute with their own GitHub identity, per the repo's outward-facing-action
@@ -48,7 +48,7 @@ mutually exclusive, but only one is likely worth the review-latency risk this cl
    - Apply `doc_content/PATCH_mutation-reference.md`'s insertion block into
      `references/mutation-reference.md` at the documented location.
    - Apply `doc_content/PATCH_SKILL.md`'s one-row addition to `SKILL.md`'s reference table.
-   - Keep wording generic — no "Mnemo" anywhere in the applied content (already true above).
+   - Keep wording generic — no "Warden" anywhere in the applied content (already true above).
 
 3. **Lint locally (must pass CI)**
 

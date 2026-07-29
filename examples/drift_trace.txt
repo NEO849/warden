@@ -5,7 +5,7 @@
    feature 'days_since_signup' silently re-pointed fct_users_created → fct_users_created_v2
    (name unchanged, description unchanged — a schema-diff sees nothing)
 
-=== BEAT 3-4: Mnemo wakes, compares to memory, re-scores, governs ===
+=== BEAT 3-4: Warden wakes, compares to memory, re-scores, governs ===
    remembered: ['urn:li:dataset:(urn:li:dataPlatform:hive,fct_users_created,PROD)']
    now:        ['urn:li:dataset:(urn:li:dataPlatform:hive,fct_users_created_v2,PROD)']
    source delta detected: True
@@ -14,7 +14,7 @@
 
 === BEAT 5: payoff ===
    Caught before the next training run baked the drift into prod —
-   because Mnemo REMEMBERED the prior source. A one-shot tool cannot see a
+   because Warden REMEMBERED the prior source. A one-shot tool cannot see a
    delta under an unchanged schema.
 
 ML-DRIFT DEMO GREEN ✅

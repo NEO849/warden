@@ -1,4 +1,4 @@
-# Mnemo — DataHub Agent Hackathon
+# Warden — DataHub Agent Hackathon
 # Exact pins, taken from `.venv/bin/pip freeze` against the quickstart this project was built and
 # demoed against (see pyproject.toml — the console_scripts install path mirrors these same pins).
 acryl-datahub[datahub-rest,datahub-kafka]==1.6.0.15
