@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "datahub-mnemo"
+version = "0.1.0"
+description = "Mnemo — compounding, governed memory for the DataHub metadata graph"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.11"
+dependencies = [
+    "acryl-datahub[datahub-rest,datahub-kafka]==1.6.0.15",
+    "acryl-datahub-actions==1.6.0.15",
+    "python-dotenv==1.2.2",
+    "mcp==1.28.1",
+    "numpy==2.5.1",
+]
+
+[project.scripts]
+mnemo = "mnemo.cli:main"
+
+[tool.setuptools]
+py-modules = ["calibration", "confidence_model"]
+
+[tool.setuptools.packages.find]
+include = ["mnemo*"]

@@ -1,11 +1,12 @@
 # Mnemo — DataHub Agent Hackathon
-# NOTE: pin exact versions on day 1 after `datahub version` against the quickstart.
-acryl-datahub[datahub-rest,datahub-kafka]>=0.15.0
-acryl-datahub-actions>=0.1.0
-python-dotenv>=1.0.0
+# Exact pins, taken from `.venv/bin/pip freeze` against the quickstart this project was built and
+# demoed against (see pyproject.toml — the console_scripts install path mirrors these same pins).
+acryl-datahub[datahub-rest,datahub-kafka]==1.6.0.15
+acryl-datahub-actions==1.6.0.15
+python-dotenv==1.2.2
 # Reflection-insight text is synthesized via local Ollama (HTTP), no SDK dep.
 # langgraph/anthropic were listed but never used — the agent is a direct Python
 # pipeline (observe->detect->govern->reflect), not a LangGraph/Claude orchestration.
-mcp>=1.0
+mcp==1.28.1
 # calibration.py (Block C): MAP weight-fit + temperature scaling, pure numpy/stdlib, no new framework.
-numpy>=1.26
+numpy==2.5.1
