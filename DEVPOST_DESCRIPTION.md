@@ -3,16 +3,35 @@
 *(Drop straight into the Devpost project description fields. Lead sentence is intentionally first —
 Devpost and judges skim the opening line.)*
 
+## One-sentence pitch
+
+Mnemo gives DataHub's graph a memory: it catches a silent upstream-source swap that every schema-diff
+misses — live, on DataHub's own graph — writes the verdict back as governance, and a second agent
+refuses the model by reading only what Mnemo wrote.
+
 ## Tagline
 
 Compounding, governed memory for the data graph — Mnemo catches silent ML model drift under an
 unchanged schema by remembering what a model's inputs used to be.
 
+**Links:** Demo video `[VIDEO]` · Live Trust Console `[LIVE-CONSOLE]` · OSS PR to `datahub-skills`
+`[OSS-PR]` · Repo `[REPO]` — placeholders, filled in before final submission.
+
+## Governance before AI
+
+Mnemo isn't a smarter model bolted onto DataHub — it's context infrastructure. It's the difference
+between an agent that re-derives the state of the world from scratch on every run and one that
+*remembers*, on the graph itself, what it believed last time and updates that belief against new
+evidence. That memory is what lets a second, completely independent agent trust the graph instead of
+re-guessing it — the mechanism this submission demonstrates end to end.
+
 ## Why this matters (the usefulness anchor)
 
-A value- or PSI-drift monitor watches the *data flowing through* the model — it can only alarm
-**after** bad data has already been ingested and scored. Mnemo watches the *structure of what feeds
-the model* — a remembered source-set compared against live lineage — so it catches the swap **before**
+In production, a model's accuracy doesn't crash — it quietly rots, one unremarkable commit at a time,
+until someone finally audits why a metric drifted last quarter. A value- or PSI-drift monitor watches
+the *data flowing through* the model — it can only alarm **after** bad data has already been ingested
+and scored; that's the symptom. Mnemo watches the *structure of what feeds the model* — a remembered
+source-set compared against live lineage — targeting the root cause, so it catches the swap **before**
 the next training run ever touches it.
 
 ## Inspiration
@@ -66,6 +85,13 @@ Mnemo is a memory agent for DataHub that:
    leakage guard (the human's own decision can never be a model input) — and the *same* weights that
    were hand-set priors on day one become fit parameters, honestly demonstrated on a synthetic,
    fixed-seed outcome stream rather than claimed as learned from production data.
+8. **Measurably helps an LLM reason about drift**: a controlled eval (`eval/run_eval.py`, **N=21**,
+   6 of them adversarial) compares task accuracy with vs. without Mnemo's memory. The honest headline is
+   **WITH_RAW 0.52 → 0.91** (memory reduced to bare key=value facts, no conclusion words — the model has
+   to reason, not parrot a label) — with a **placebo control at 0.33**, below the no-memory baseline of
+   0.52, showing the lift comes from *relevant* memory and not just more tokens. `WITH` (full narrated
+   memory) reaches 1.00, which we call out as an acknowledged ceiling on this eval size rather than
+   headline it — see `examples/EVAL_NOTES.md`.
 
 ## How it's different from a chat/analytics agent
 
@@ -96,9 +122,11 @@ replicate without becoming a different kind of system.
 - The Actions-framework event hook (`EntityChangeEvent_v1`) at first never reached our custom action. We
   traced it to a wrong `schema_registry_url` default (this quickstart embeds the registry *inside* GMS,
   not on :8081) — not the event-type filter we'd first suspected. After fixing it, **event-driven wake is
-  now live-verified**: a real Kafka TAG event woke the detection, confidence 0.901→0.600, ~30s end-to-end,
-  zero polling (`EVENT_WAKE_STATUS.md`). Polling remains the shipped default; event-wake is opt-in with a
-  static watch-list.
+  now live-verified**: a Kafka TAG event (self-seeded by our demo script, not organic production traffic)
+  woke the detection, confidence 0.901→0.600 (that magnitude is prior-driven, not a measured drift
+  statistic — see "What it does" below for the measured-PSI variant), ~30s end-to-end, zero polling
+  (`EVENT_WAKE_STATUS.md`). Polling remains the shipped default; event-wake is opt-in with a static
+  watch-list.
 - Structured-property write-back needed the direct `StructuredPropertiesClass` emit path rather than the
   patch-builder helper to round-trip cleanly against our quickstart image.
 - Getting insight synthesis working without requiring judges to provision an API key — solved with a
@@ -111,7 +139,10 @@ replicate without becoming a different kind of system.
   writes a governed review flag → a separate agent (reading only the graph) refuses the model.
   `run_live_chain_demo.py`, 17/17 poll-until gates, idempotent — no fixed sleeps, every stage self-verifying.
 - **Autonomy, not a hardcoded watch-list**: `Dataset ←DerivedFrom— MLFeature ←Consumes— MLModel` reverse
-  lineage means the agent discovers *which* models a changed dataset affects, with the static list as a fallback.
+  lineage means the agent discovers *which* models a changed dataset affects, with the static list as a
+  fallback. The proof is deliberate: the model used in the live-chain demo (`scienceModel`) is kept **out
+  of** the wake service's static watch-list on purpose, so it only gets woken and governed if reverse
+  lineage actually resolves it — not because it was already on a list.
 - A confidence model that is actually principled (log-odds Bayesian update, discounted by lineage
   distance, Cromwell's-rule-bounded) rather than a hand-waved 0–1 score.
 - Live-verified drift detection: a source-set delta invisible to schema-diffing, caught by comparing
@@ -140,7 +171,9 @@ python, datahub-sdk, datahub-actions-framework, ollama, docker, bayesian-inferen
 ## Try it out
 
 Setup and exact run commands (DataHub quickstart, `.env`, `python run_ml_drift_demo.py`,
-`python run_reflection_demo.py`) are in the repo [`README.md`](README.md).
+`python run_reflection_demo.py`) are in the repo [`README.md`](README.md), with a step-by-step
+reproduction walkthrough in [`docs/REPRODUCE.md`](docs/REPRODUCE.md). Live demo: `[VIDEO]` ·
+`[LIVE-CONSOLE]` · source: `[REPO]` · OSS contribution: `[OSS-PR]`.
 
 ## License
 

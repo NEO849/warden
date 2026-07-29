@@ -1,10 +1,20 @@
 # Mnemo — Compounding, Governed Memory for the Data Graph
 
-**Mnemo catches silent ML model drift that no schema-diff tool can see, by remembering what a model's
-inputs used to be and comparing that memory to live lineage — with every belief carrying a Bayesian
-confidence score, a provenance chain, and a governance gate before anything is trusted.**
+**Mnemo gives DataHub's graph a memory: it catches a silent upstream-source swap that every schema-diff
+misses — live, on DataHub's own graph — writes the verdict back as governance, and a second agent
+refuses the model by reading only what Mnemo wrote.**
 
 Category: **Production ML Agents** · DataHub Agent Hackathon 2026 · License: **Apache-2.0**
+
+Governance before AI: Mnemo isn't a smarter model bolted onto DataHub, it's context infrastructure — a
+memory layer that lets *any* agent, including a second and completely independent one, trust the graph
+instead of re-deriving it from scratch every time. The belief lives on the entity, not in a prompt or a
+chat transcript, so it survives across agents and across runs.
+
+**Links:** Demo video `[VIDEO]` · Live Trust Console `[LIVE-CONSOLE]` · OSS PR to `datahub-skills`
+`[OSS-PR]` · Repo `[REPO]` · [Reproduce it yourself](docs/REPRODUCE.md)
+*(placeholders — filled in before final submission; see [Status / limitations](#status--limitations)
+for what each link backs up)*
 
 > ⚠️ **Read this before judging any claim in this README.** Everything below is either **BUILT & live-verified**
 > (marked ✅) or **honest work-in-progress** (marked 🚧), stated plainly in [Status / limitations](#status--limitations).
@@ -20,6 +30,13 @@ chat-with-your-metadata agent sees **nothing wrong**: same field names, same typ
 the model trained on that feature is now consuming a different population, silently. This is how target
 leakage and quiet accuracy decay get baked into a production model between two otherwise-unremarkable
 commits.
+
+In production this doesn't show up as an outage — it shows up months later as "why did this metric drift
+last quarter," after the bad model has already been serving traffic. A value- or PSI-drift monitor only
+alarms **after** bad data has been ingested and scored — it watches the symptom. Mnemo watches the
+**structure of what feeds the model** — a remembered source-set compared against live lineage — so it
+targets the root cause and can catch the swap **before** the next training run ever touches it, not weeks
+after someone finally audits why accuracy fell.
 
 ## How Mnemo catches it
 
@@ -40,7 +57,10 @@ transcript. When it revisits a model, it:
    entity — that approval workflow is Cloud-only; this is the honest OSS-native gate.)
 
 This is demonstrated end-to-end in [`run_ml_drift_demo.py`](run_ml_drift_demo.py): confidence visibly moves
-**0.901 → 0.600**, crossing the 0.7 proposal threshold, live against a running DataHub instance.
+**0.901 → 0.600**, crossing the 0.7 proposal threshold, live against a running DataHub instance. *(That
+magnitude is prior-driven — it comes from the structural source-delta term, not a measured drift
+statistic. See [Measured drift as a Bayesian evidence term](#status--limitations) below for the variant
+where the drop is backed by a real PSI/KS score instead.)*
 
 ## Why a reference chat/analytics agent structurally can't do this
 
@@ -184,10 +204,10 @@ Stated plainly, because a rigor judge should be able to trust this table without
 | Measured drift as a Bayesian evidence term (PSI/KS) | `mnemo/drift.py`, `run_measured_drift_demo.py` | ✅ **BUILT & live-verified** — a real PSI/KS score over the swapped sources' field histograms feeds the belief update as a `drift_stat` term. **Superset:** when PSI is quiet the structural term alone still fires (kill-shot `0.901→0.600`); when PSI fires the drop is measured, so confidence falls harder (`0.901→0.251`). Profile-gated: no profiles → today's structural-only behavior, unchanged. |
 | Lineage-wide reflection: traversal, confidence pooling, guards, write-back | `mnemo/reflection.py`, `run_reflection_demo.py` | ✅ **REAL**, live-verified |
 | Core plumbing on **real, non-seeded** DataHub data | `run_realdata_demo.py` | ✅ **BUILT & live-verified** — Reader→Memory→Bayesian-confidence→read-back runs on DataHub's own bootstrap sample graph (`SampleHiveDataset`: real schema/owners/lineage), reaching confidence 0.951 and round-tripping `mnemo.*` on a non-author-seeded entity. Honest scope: the drift *scenario* + a real PSI still need constructed data (the sample pack ships no numeric histograms) — stated in the script's `[honesty]` line. |
-| End-to-end organic live chain + **reverse-lineage auto-watch** | `run_live_chain_demo.py`, `actions/mnemo_wake_action.py` | ✅ **BUILT & live-verified** — one clockwork chain on DataHub's own sample graph: a real Kafka `EntityChangeEvent` → the always-on service **autonomously resolves, via reverse lineage,** which model the changed dataset feeds (`Dataset ←DerivedFrom— MLFeature ←Consumes— MLModel`, static list = fallback) → wakes → writes governance → the Trust-Console mirrors it → a foreign interop agent refuses the model. **17/17 poll-until gates green, idempotent across runs.** Honest scope: structural source-delta on real datasets (no numeric-histogram PSI on the sample pack). |
+| End-to-end organic live chain + **reverse-lineage auto-watch** | `run_live_chain_demo.py`, `actions/mnemo_wake_action.py` | ✅ **BUILT & live-verified** — one clockwork chain on DataHub's own sample graph: a real Kafka `EntityChangeEvent` → the always-on service **autonomously resolves, via reverse lineage,** which model the changed dataset feeds (`Dataset ←DerivedFrom— MLFeature ←Consumes— MLModel`, static list = fallback) → wakes → writes governance → the Trust-Console mirrors it → a foreign interop agent refuses the model. **17/17 poll-until gates green, idempotent across runs.** Honest scope: structural source-delta on real datasets (no numeric-histogram PSI on the sample pack). **The autonomy proof, precisely:** the triggering tag event is self-seeded by the demo script (not organic production traffic), and `scienceModel` is deliberately kept **out of** the wake service's static `MNEMO_WATCH_MODELS` list — so getting woken and governed anyway is only possible through the reverse-lineage resolution, not the fallback. |
 | Reflection insight *text* synthesis | `mnemo/llm.py` | ✅ **REAL** via local Ollama (falls back to a deterministic stub on any Ollama error — pipeline never breaks) |
 | Learned + calibrated confidence: outcome loop, MAP weight-fit, temperature scaling, ECE/Brier | `calibration.py`, `mnemo/agent.py::resolve_review`/`actuate_governance` | ✅ **REAL mechanism, live-verified outcome loop** — `resolve_review()`/`mnemo.decision_features`/`mnemo.outcome`/`mnemo.finding` round-trip on a live test entity (leakage guard confirmed structurally: `'human' not in FEATURE_SOURCES`). `calibration.py`'s weight-recovery + ECE/Brier improvement run on a **synthetic, fixed-seed** outcome stream — explicitly *not* a claim of having learned from production data (see the script's own `[HONESTY]` line). |
-| Event-driven "wakes on `EntityChangeEvent`" | `actions/mnemo_wake_action.py`, `actions/mnemo_wake_config.yaml`, `EVENT_WAKE_STATUS.md` | ✅ **LIVE-VERIFIED (opt-in)** — a DataHub Actions consumer wakes `check_model_inputs` on a real `EntityChangeEvent_v1` (Kafka, **zero polling**): a TAG event dropped confidence `0.901→0.600` → proposal, ~30s end-to-end (proof: `actions/verify_run_SUCCESS.log`). Empirically-confirmed categories: `TAG`/`TECHNICAL_SCHEMA`/`LIFECYCLE`; watch-list is static config. **Polling remains the shipped default** (`run_ml_drift_demo.py`); event-wake is additive/opt-in. |
+| Event-driven "wakes on `EntityChangeEvent`" | `actions/mnemo_wake_action.py`, `actions/mnemo_wake_config.yaml`, `EVENT_WAKE_STATUS.md` | ✅ **LIVE-VERIFIED (opt-in)** — a DataHub Actions consumer wakes `check_model_inputs` on a real `EntityChangeEvent_v1` (Kafka, **zero polling**): a self-seeded TAG event dropped confidence `0.901→0.600` (prior-driven magnitude, see the drift row above) → proposal, ~30s end-to-end (proof: `actions/verify_run_SUCCESS.log`). Empirically-confirmed categories: `TAG`/`TECHNICAL_SCHEMA`/`LIFECYCLE`; watch-list is static config. **Polling remains the shipped default** (`run_ml_drift_demo.py`); event-wake is additive/opt-in. |
 | Eval harness (task accuracy across memory arms) | `eval/run_eval.py`, `eval/results.csv` | ✅ **BUILT & run** — controlled ablation (**N=21**, incl. 6 adversarial cases built to defeat a trivial fact-pattern shortcut; local Ollama, temp 0): WITHOUT 0.52 / **WITH_RAW 0.91** / WITH 1.00 / PLACEBO 0.33 (macro-F1 0.49/0.91/1.00/0.17). **WITH_RAW** strips the memory to bare key=value facts (no conclusion words) → the model *reasons* to **0.91** (lift **+0.38**), even on the adversarial cases, missing two (incl. an adversarial DRIFT where `prior==current`) — the production-realistic number, not label-parroting. PLACEBO (0.33) < WITHOUT (0.52) → the lift is *relevant* memory, not more tokens. WITH=1.00 is an acknowledged ceiling. See `examples/EVAL_NOTES.md`. |
 | `examples/` folder (provenance-chain + reflection-card artifacts) | `examples/` | ✅ **present** — `memory_record.json`, `drift_trace.txt`, `reflection.json`, `eval_summary.json`, `eval_lift.svg`, `EVAL_NOTES.md`. |
 | LangGraph ReAct orchestration | — | ⛔ **not used, by design** — removed from deps; the agent is a direct Python pipeline (observe→detect→govern→reflect), not a LangGraph/Claude orchestration. |

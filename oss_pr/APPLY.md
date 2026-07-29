@@ -50,7 +50,12 @@ You should still re-run these yourself once the files are in place inside the re
 
    ```bash
    cp -r <this-repo>/oss_pr/skill/datahub-agent-memory skills/datahub-agent-memory
+   find skills/datahub-agent-memory \( -name '__pycache__' -o -name '*.pyc' \) -exec rm -rf {} +
    ```
+
+   The second line matters: local `scripts/__pycache__/belief.cpython-312.pyc` build cruft is present in
+   the source folder and must not land in the PR — check `git status` shows only `.py`/`.md`/`.json`
+   files staged before committing.
 
    No edits to any existing file. No `plugin.json`, `marketplace.json`, or `CHANGELOG.md` changes —
    skills are auto-discovered by directory.
