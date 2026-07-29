@@ -8,6 +8,13 @@ Devpost and judges skim the opening line.)*
 Compounding, governed memory for the data graph — Mnemo catches silent ML model drift under an
 unchanged schema by remembering what a model's inputs used to be.
 
+## Why this matters (the usefulness anchor)
+
+A value- or PSI-drift monitor watches the *data flowing through* the model — it can only alarm
+**after** bad data has already been ingested and scored. Mnemo watches the *structure of what feeds
+the model* — a remembered source-set compared against live lineage — so it catches the swap **before**
+the next training run ever touches it.
+
 ## Inspiration
 
 Data catalogs and metadata chat agents can tell you what your graph looks like *right now* — but they
@@ -25,7 +32,11 @@ Mnemo is a memory agent for DataHub that:
 
 1. **Remembers** each asset's prior belief — as typed structured properties written directly onto the
    entity (`mnemo.confidence`, `mnemo.logodds`, `mnemo.mass`, `mnemo.provenance`, `mnemo.summary`) —
-   no side database, no GMS schema rebuild.
+   no side database, no GMS schema rebuild. Honesty nuance: a fresh, single-observation belief can
+   read a high confidence (0.901 in our demo) without being auto-trusted — Mnemo also tracks the
+   *evidence mass* behind that number and only allows a silent auto-write once enough independent
+   evidence has accrued (`mass >= N_MIN`). One clean read is high-confidence but still `needs-review`,
+   not `TRUSTED` — a deliberate "watched, not blindly trusted" default, not a bug in the demo.
 2. **Detects drift a schema-diff can't see**: it compares its remembered set of a model's upstream
    *source URNs* against the live lineage graph. In our demo, a feature's source is silently re-pointed
    from `fct_users_created` to `fct_users_created_v2` — name and description unchanged — and Mnemo

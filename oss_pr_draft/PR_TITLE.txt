@@ -1,0 +1,1 @@
+docs: document defining structured properties + agent write-back pattern in datahub-enrich
