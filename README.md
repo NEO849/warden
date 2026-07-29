@@ -4,6 +4,10 @@
 misses — live, on DataHub's own graph — writes the verdict back as governance, and a second agent
 refuses the model by reading only what Warden wrote.**
 
+![Warden Trust Console — a read-only dashboard reading warden.* structured properties straight off the DataHub graph: a live Drift Seismograph up top, a flagged model's reverse-lineage path, and the decision trail behind its NEEDS_REVIEW verdict.](docs/screenshots/trust-console.png)
+
+*The Warden Trust Console (read-only) rendering live `warden.*` governance state off the real DataHub graph — a Drift Seismograph, a flagged model's reverse-lineage spine, and the decision trail behind its `NEEDS_REVIEW` verdict.*
+
 Category: **Production ML Agents** · DataHub Agent Hackathon 2026 · License: **Apache-2.0**
 
 Governance before AI: Warden isn't a smarter model bolted onto DataHub, it's context infrastructure — a
