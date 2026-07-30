@@ -11,19 +11,22 @@
   every schema-diff misses — then writes the verdict back as governance a second, independent agent can trust.</b>
 </p>
 
+<!-- Core badges — one unified row, four. Palette: teal #2DD4BF, one red accent #E5484D. -->
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-0d9488?style=for-the-badge&labelColor=0b0f14" alt="Apache-2.0"></a>
-  <img src="https://img.shields.io/badge/live_chain-17%2F17_green-0d9488?style=for-the-badge&labelColor=0b0f14" alt="Live chain 17/17 green">
-  <img src="https://img.shields.io/badge/track-Production_ML_Agents-14b8a6?style=for-the-badge&labelColor=0b0f14" alt="Track: Production ML Agents">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-2DD4BF?style=flat-square&labelColor=0b0f14" alt="Apache-2.0"></a>&nbsp;
+  <img src="https://img.shields.io/badge/live_chain-17%2F17_green-2DD4BF?style=flat-square&labelColor=0b0f14" alt="Live chain 17/17 green">&nbsp;
+  <img src="https://img.shields.io/badge/track-Production_ML_Agents-2DD4BF?style=flat-square&labelColor=0b0f14" alt="Track: Production ML Agents">&nbsp;
+  <img src="https://img.shields.io/badge/writes-NEEDS__REVIEW-E5484D?style=flat-square&labelColor=0b0f14" alt="Warden writes the governance verdict NEEDS_REVIEW">
 </p>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/DataHub-graph--native_memory-5eead4?style=flat-square&labelColor=0b0f14" alt="Graph-native memory on DataHub">
-  <img src="https://img.shields.io/badge/confidence-Bayesian_log--odds-34d399?style=flat-square&labelColor=0b0f14" alt="Bayesian log-odds confidence">
-  <img src="https://img.shields.io/badge/wake-Kafka_EntityChangeEvent-B9A6E8?style=flat-square&labelColor=0b0f14" alt="Event-driven wake on Kafka">
-  <img src="https://img.shields.io/badge/LLM-local_Ollama_·_no_API_key-F0C35A?style=flat-square&labelColor=0b0f14" alt="Local Ollama, no API key">
-  <img src="https://img.shields.io/badge/reads_via-MCP_+_SDK-5AC8F5?style=flat-square&labelColor=0b0f14" alt="MCP and SDK">
-</p>
+<!-- Detail facts — centered two-column table (HTML <table align> so GitHub centers it; kein CSS). -->
+<table align="center">
+  <tr><td align="right"><b>DataHub</b></td><td align="left"><code>graph-native memory · no side DB</code></td></tr>
+  <tr><td align="right"><b>Confidence</b></td><td align="left"><code>Bayesian log-odds</code></td></tr>
+  <tr><td align="right"><b>Wake</b></td><td align="left"><code>Kafka EntityChangeEvent</code></td></tr>
+  <tr><td align="right"><b>LLM</b></td><td align="left"><code>local Ollama · no API key</code></td></tr>
+  <tr><td align="right"><b>Reads via</b></td><td align="left"><code>MCP + SDK</code></td></tr>
+</table>
 
 <p align="center">
   <b>
@@ -37,7 +40,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/trust-console.png" width="900"
+  <img src="docs/screenshots/trust-console.png" width="90%"
        alt="The Warden Trust Console (read-only) rendering live warden.* governance state off the real DataHub graph: a Drift Seismograph up top, a flagged model's reverse-lineage spine, and the decision trail behind its NEEDS_REVIEW verdict.">
 </p>
 
